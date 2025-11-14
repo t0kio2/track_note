@@ -104,8 +104,8 @@ type Track = {
 ```
 
 - ストレージキー:
-  - `copytrack.videos`: `Video[]`
-  - `copytrack.tracks`: Record<`videoId`, `Track`>
+  - `tracknote.videos`: `Video[]`
+  - `tracknote.tracks`: Record<`videoId`, `Track`>
 - ブロック数: `Math.ceil(durationSec / 5)` で配列長を決定（不足時は 0 でパディング）
 
 ### 例: 疑似データ

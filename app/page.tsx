@@ -15,32 +15,41 @@ export default function Home() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    setVideos(getVideos());
+    (async () => {
+      try {
+        const list = await getVideos();
+        setVideos(list);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
   }, []);
 
-  const handleAdded = (v: Video | null) => {
+  const handleAdded = async (v: Video | null) => {
     setOpen(false);
     if (v) {
-      setVideos(getVideos());
+      const list = await getVideos();
+      setVideos(list);
       router.push(`/videos/${v.videoId}`);
     }
   };
 
-  const onDelete = (id: string) => {
+  const onDelete = async (id: string, videoId: string) => {
     if (!confirm("この動画を削除しますか？")) return;
-    removeVideo(id);
-    setVideos(getVideos());
+    await removeVideo(id, videoId);
+    const list = await getVideos();
+    setVideos(list);
   };
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <header className="mx-auto max-w-5xl px-4 py-6">
-        <h1 className="text-2xl font-semibold">CopyTrack</h1>
+        <h1 className="text-2xl font-semibold">TrackNote</h1>
         <p className="text-sm text-zinc-600">YouTube のタブ譜動画で練習進捗を記録</p>
       </header>
       <main className="mx-auto max-w-5xl px-4 pb-24">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-medium">登録済み</h2>
+          <h2 className="text-lg font-medium">練習曲一覧</h2>
           <button
             className="rounded-md bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700"
             onClick={() => setOpen(true)}
@@ -56,16 +65,16 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {videos.map((v) => (
-              <article key={v.id} className="overflow-hidden rounded-lg border bg-white shadow-sm">
+              <article key={v.id} className="overflow-hidden rounded-lg border bg-white shadow-sm flex sm:block">
                 <Link href={`/videos/${v.videoId}`}>
                   {/* use img for remote thumbnail to avoid Next/Image config */}
                   <img
                     src={v.thumbnailUrl || thumbnailUrlFromId(v.videoId)}
                     alt={v.title}
-                    className="aspect-video w-full object-cover"
+                    className="w-40 aspect-video object-cover flex-none sm:w-full"
                   />
                 </Link>
-                <div className="p-3">
+                <div className="p-3 min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <Link href={`/videos/${v.videoId}`} className="font-medium hover:underline">
@@ -75,7 +84,7 @@ export default function Home() {
                     </div>
                     <button
                       className="rounded-md border px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50"
-                      onClick={() => onDelete(v.id)}
+                      onClick={() => onDelete(v.id, v.videoId)}
                     >
                       削除
                     </button>
@@ -127,7 +136,7 @@ function AddDialog({
     if (!valid) return;
     try {
       setSaving(true);
-      const v = addVideo({ url, title: title.trim(), instrument: instrument.trim(), durationSec: typeof duration === "number" ? duration : undefined });
+      const v = await addVideo({ url, title: title.trim(), instrument: instrument.trim(), durationSec: typeof duration === "number" ? duration : undefined });
       onAdded(v);
     } catch (e: any) {
       alert(e?.message || "登録に失敗しました");
@@ -286,13 +295,31 @@ function AutoDurationFetcher({ url, onDuration, onLoading }: { url: string; onDu
   return null;
 }
 function CardMetrics({ videoId }: { videoId: string }) {
-  const track = getTrack(videoId);
-  if (!track || !track.levels?.length) return null;
-  const blocks = track.levels.length;
-  const covered = track.levels.filter((x) => x > 0).length;
-  const coverageRate = Math.round((covered / blocks) * 100);
-  const sum = track.levels.reduce((a, b) => a + b, 0);
-  const proficiencyRate = Math.round((sum / (3 * blocks)) * 100);
+  const [coverageRate, setCoverageRate] = useState<number | null>(null);
+  const [proficiencyRate, setProficiencyRate] = useState<number | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const track = await getTrack(videoId);
+        if (!track || !track.levels?.length) {
+          setCoverageRate(null);
+          setProficiencyRate(null);
+          return;
+        }
+        const blocks = track.levels.length;
+        const covered = track.levels.filter((x) => x > 0).length;
+        const cov = Math.round((covered / blocks) * 100);
+        const sum = track.levels.reduce((a, b) => a + b, 0);
+        const prof = Math.round((sum / (3 * blocks)) * 100);
+        setCoverageRate(cov);
+        setProficiencyRate(prof);
+      } catch {
+        setCoverageRate(null);
+        setProficiencyRate(null);
+      }
+    })();
+  }, [videoId]);
+  if (coverageRate === null || proficiencyRate === null) return null;
   return (
     <div className="mt-2 space-y-1">
       <Gauge label="完了" percent={coverageRate} color="emerald" />

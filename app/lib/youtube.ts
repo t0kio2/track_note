@@ -29,7 +29,7 @@ export function extractYouTubeId(input: string): string | null {
   return null;
 }
 
-export function thumbnailUrlFromId(id: string, quality: "hq" | "mq" | "max" = "hq"): string {
+export function thumbnailUrlFromId(id: string, quality: "hq" | "mq" | "max" = "mq"): string {
   const map = {
     hq: "hqdefault.jpg",
     mq: "mqdefault.jpg",
@@ -43,4 +43,3 @@ export function normalizeYouTubeUrl(input: string): string {
   if (!id) return input.trim();
   return `https://www.youtube.com/watch?v=${id}`;
 }
-

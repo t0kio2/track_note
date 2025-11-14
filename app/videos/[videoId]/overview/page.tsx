@@ -14,10 +14,18 @@ export default function OverviewPage() {
 
   useEffect(() => {
     if (!videoId) return;
-    const v = getVideoByVideoId(String(videoId));
-    setVideo(v ?? null);
-    const t = getTrack(String(videoId));
-    setTrackState(t);
+    (async () => {
+      try {
+        const [v, t] = await Promise.all([
+          getVideoByVideoId(String(videoId)),
+          getTrack(String(videoId)),
+        ]);
+        setVideo(v ?? null);
+        setTrackState(t);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
   }, [videoId]);
 
   const blocks = track?.levels?.length ?? 0;

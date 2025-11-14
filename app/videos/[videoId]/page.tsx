@@ -15,10 +15,18 @@ export default function VideoDetailPage() {
 
   useEffect(() => {
     if (!videoId) return;
-    const v = getVideoByVideoId(String(videoId));
-    setVideo(v ?? null);
-    const t = getTrack(String(videoId));
-    setTrackState(t);
+    (async () => {
+      try {
+        const [v, t] = await Promise.all([
+          getVideoByVideoId(String(videoId)),
+          getTrack(String(videoId)),
+        ]);
+        setVideo(v ?? null);
+        setTrackState(t);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
   }, [videoId]);
 
   const blocks = track?.levels?.length ?? 0;
@@ -47,7 +55,8 @@ export default function VideoDetailPage() {
     const next = { ...track, levels: track.levels.slice() };
     next.levels[index] = level;
     setTrackState(next);
-    setTrack(next);
+    // 楽観的更新（失敗は握りつぶす）
+    setTrack(next).catch(() => {});
   };
 
   const toggle = (index: number) => {
@@ -274,19 +283,22 @@ export default function VideoDetailPage() {
           trackBlockSize={track.blockSizeSec}
           onClose={() => setEditOpen(false)}
           onSaved={(patch) => {
-            if (typeof patch.durationSec === "number") {
-              updateVideo(video.id, { durationSec: patch.durationSec, title: patch.title, instrument: patch.instrument, note: patch.note });
-            } else {
-              updateVideo(video.id, { title: patch.title, instrument: patch.instrument, note: patch.note });
-            }
-            if (typeof patch.blockSizeSec === "number") {
-              updateTrackBlockSize(video.videoId, patch.blockSizeSec);
-            }
-            // 再読込
-            const v = getVideoByVideoId(video.videoId);
-            if (v) setVideo({ ...v });
-            const t = getTrack(video.videoId);
-            if (t) setTrackState(t);
+            (async () => {
+              if (typeof patch.durationSec === "number") {
+                await updateVideo(video.id, { durationSec: patch.durationSec, title: patch.title, instrument: patch.instrument, note: patch.note });
+              } else {
+                await updateVideo(video.id, { title: patch.title, instrument: patch.instrument, note: patch.note });
+              }
+              if (typeof patch.blockSizeSec === "number") {
+                await updateTrackBlockSize(video.videoId, patch.blockSizeSec);
+              }
+              const [nv, nt] = await Promise.all([
+                getVideoByVideoId(video.videoId),
+                getTrack(video.videoId),
+              ]);
+              if (nv) setVideo(nv);
+              if (nt) setTrackState(nt);
+            })();
             setEditOpen(false);
           }}
         />

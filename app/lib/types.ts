@@ -21,6 +21,6 @@ export type Track = {
 export type TracksIndex = Record<string, Track>;
 
 export const STORAGE_KEYS = {
-  videos: "copytrack.videos",
-  tracks: "copytrack.tracks",
+  videos: "tracknote.videos",
+  tracks: "tracknote.tracks",
 } as const;
