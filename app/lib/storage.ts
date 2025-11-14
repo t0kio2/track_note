@@ -1,7 +1,16 @@
 "use client";
 
-import { STORAGE_KEYS, Track, TracksIndex, Video } from "./types";
+import type { Track, Video } from "./types";
 import { extractYouTubeId, normalizeYouTubeUrl, thumbnailUrlFromId } from "./youtube";
+import {
+  fetchAllVideosRemote,
+  fetchTrackRemote,
+  fetchVideoRemote,
+  insertVideoRemote,
+  updateVideoRemote as updateVideoRemoteApi,
+  deleteVideoRemote,
+  upsertTrackRemote,
+} from "./storage-remote";
 
 function nowISO() {
   return new Date().toISOString();
@@ -15,98 +24,40 @@ function uuid() {
   return `id_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function readJSON<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+// --- Remote-only API ---
+export async function getVideos(): Promise<Video[]> {
+  return await fetchAllVideosRemote();
 }
 
-function writeJSON<T>(key: string, value: T) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(value));
+export async function getVideoByVideoId(videoId: string): Promise<Video | undefined> {
+  const v = await fetchVideoRemote(videoId);
+  return v ?? undefined;
 }
 
-export function getVideos(): Video[] {
-  return readJSON<Video[]>(STORAGE_KEYS.videos, []);
+export async function getTrack(videoId: string): Promise<Track | null> {
+  return await fetchTrackRemote(videoId);
 }
 
-export function setVideos(videos: Video[]) {
-  writeJSON(STORAGE_KEYS.videos, videos);
+export async function setTrack(track: Track): Promise<void> {
+  await upsertTrackRemote(track);
 }
 
-export function getTracksIndex(): TracksIndex {
-  return readJSON<TracksIndex>(STORAGE_KEYS.tracks, {});
+export async function removeVideo(id: string, videoId: string): Promise<void> {
+  await deleteVideoRemote(id, videoId);
 }
 
-export function setTracksIndex(idx: TracksIndex) {
-  writeJSON(STORAGE_KEYS.tracks, idx);
+export async function updateVideo(id: string, patch: Partial<Pick<Video, "title" | "instrument" | "note" | "durationSec">>): Promise<void> {
+  const updatedAt = nowISO();
+  await updateVideoRemoteApi(id, { ...(patch as any), updatedAt } as any);
 }
 
-export function getVideoByVideoId(videoId: string): Video | undefined {
-  return getVideos().find((v) => v.videoId === videoId);
-}
-
-export function getTrack(videoId: string): Track | null {
-  const idx = getTracksIndex();
-  return idx[videoId] ?? null;
-}
-
-export function setTrack(track: Track) {
-  const idx = getTracksIndex();
-  idx[track.videoId] = track;
-  setTracksIndex(idx);
-}
-
-export function removeVideo(id: string) {
-  const videos = getVideos();
-  const target = videos.find((v) => v.id === id);
-  if (!target) return;
-  setVideos(videos.filter((v) => v.id !== id));
-  // 併せてトラックも削除
-  const idx = getTracksIndex();
-  delete idx[target.videoId];
-  setTracksIndex(idx);
-}
-
-export function updateVideo(id: string, patch: Partial<Pick<Video, "title" | "instrument" | "note" | "durationSec">>) {
-  const videos = getVideos();
-  const i = videos.findIndex((v) => v.id === id);
-  if (i === -1) return;
-  const prev = videos[i];
-  const next: Video = {
-    ...prev,
-    ...patch,
-    updatedAt: new Date().toISOString(),
-  };
-  videos[i] = next;
-  setVideos(videos);
-
-  // duration 変更時は Track を再サンプリング
-  if (typeof patch.durationSec === "number" && patch.durationSec > 0) {
-    const oldTrack = getTrack(prev.videoId);
-    const blockSize = oldTrack?.blockSizeSec ?? 5;
-    const levels = oldTrack
-      ? resampleLevelsMax(oldTrack.levels, blockSize, blockSize, patch.durationSec)
-      : Array.from({ length: Math.ceil(patch.durationSec / blockSize) }, () => 0);
-    setTrack({ videoId: prev.videoId, blockSizeSec: blockSize, levels });
-  }
-}
-
-export function addVideo(params: { url: string; title?: string; instrument?: string; durationSec?: number; blockSizeSec?: number }): Video {
+export async function addVideo(params: { url: string; title?: string; instrument?: string; durationSec?: number; blockSizeSec?: number }): Promise<Video> {
   const url = normalizeYouTubeUrl(params.url);
   const videoId = extractYouTubeId(url);
   if (!videoId) throw new Error("YouTube の URL ではないようです");
 
-  const videos = getVideos();
-  if (videos.some((v) => v.videoId === videoId)) {
-    const exist = videos.find((v) => v.videoId === videoId)!;
-    return exist; // 既存を返す
-  }
+  const exist = await fetchVideoRemote(videoId);
+  if (exist) return exist;
 
   const createdAt = nowISO();
   const v: Video = {
@@ -121,19 +72,18 @@ export function addVideo(params: { url: string; title?: string; instrument?: str
     createdAt,
     updatedAt: createdAt,
   };
-  const next = [...videos, v];
-  setVideos(next);
+  const inserted = await insertVideoRemote(v);
 
   // Track 初期化
   const blockSizeSec = params.blockSizeSec && params.blockSizeSec > 0 ? Math.floor(params.blockSizeSec) : 5;
-  const blocks = Math.ceil(v.durationSec / blockSizeSec);
+  const blocks = Math.ceil(inserted.durationSec / blockSizeSec);
   const track: Track = {
-    videoId: v.videoId,
+    videoId: inserted.videoId,
     blockSizeSec,
     levels: Array.from({ length: blocks }, () => 0),
   };
-  setTrack(track);
-  return v;
+  await setTrack(track);
+  return inserted;
 }
 
 // --- ブロック変換ユーティリティ ---
@@ -157,12 +107,12 @@ export function resampleLevelsMax(oldLevels: number[], oldBlock: number, newBloc
   return out;
 }
 
-export function updateTrackBlockSize(videoId: string, newBlockSizeSec: number) {
-  const track = getTrack(videoId);
-  const video = getVideoByVideoId(videoId);
+export async function updateTrackBlockSize(videoId: string, newBlockSizeSec: number): Promise<void> {
+  const track = await getTrack(videoId);
+  const video = await getVideoByVideoId(videoId);
   if (!track || !video) return;
   const bs = Math.max(1, Math.floor(newBlockSizeSec));
   if (bs === track.blockSizeSec) return;
   const levels = resampleLevelsMax(track.levels, track.blockSizeSec, bs, video.durationSec);
-  setTrack({ videoId, blockSizeSec: bs, levels });
+  await setTrack({ videoId, blockSizeSec: bs, levels });
 }
