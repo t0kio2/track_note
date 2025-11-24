@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AuthBar from "./components/AuthBar";
 import Analytics from "./components/Analytics";
+import { Suspense } from "react";
 import Toast from "./components/Toast";
 
 const geistSans = Geist({
@@ -34,7 +35,9 @@ export default function RootLayout({
           <AuthBar />
         </div>
         {children}
-        <Analytics />
+        <Suspense fallback={null}>
+          <Analytics />
+        </Suspense>
         <Toast />
       </body>
     </html>
