@@ -15,6 +15,7 @@ function toSnakeVideo(v: Video) {
     thumbnail_url: v.thumbnailUrl,
     instrument: v.instrument ?? null,
     note: v.note ?? null,
+    category: v.category ?? null,
     created_at: v.createdAt,
     updated_at: v.updatedAt,
   };
@@ -31,6 +32,7 @@ function fromSnakeVideo(row: any): Video {
     thumbnailUrl: row.thumbnail_url,
     instrument: row.instrument ?? undefined,
     note: row.note ?? undefined,
+    category: row.category ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   } as Video;
@@ -69,6 +71,13 @@ export async function fetchVideoRemote(videoId: string): Promise<Video | null> {
   return fromSnakeVideo(arr[0]);
 }
 
+export async function fetchVideoByIdRemote(id: string): Promise<Video | null> {
+  const rows = await sbFetch(`/rest/v1/videos?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, { requireAuth: true });
+  const arr = rows as any[];
+  if (!arr.length) return null;
+  return fromSnakeVideo(arr[0]);
+}
+
 export async function fetchTrackRemote(videoId: string): Promise<Track | null> {
   const rows = await sbFetch(`/rest/v1/tracks?select=*&video_id=eq.${encodeURIComponent(videoId)}&limit=1`, { requireAuth: true });
   const arr = rows as any[];
@@ -96,6 +105,7 @@ export async function updateVideoRemote(id: string, patch: Partial<Video>): Prom
   if (patch.note !== undefined) snake.note = patch.note ?? null;
   if (patch.durationSec != null) snake.duration_sec = patch.durationSec;
   if (patch.thumbnailUrl != null) snake.thumbnail_url = patch.thumbnailUrl;
+  if (patch.category !== undefined) snake.category = patch.category ?? null;
   if (patch.updatedAt != null) snake.updated_at = patch.updatedAt;
   await sbFetch(`/rest/v1/videos?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
@@ -119,8 +129,8 @@ export async function deleteVideoRemote(id: string, videoId: string): Promise<vo
 }
 
 export async function upsertTrackRemote(track: Track): Promise<void> {
-  const userId = await getUserId().catch(() => null);
-  const body = { ...toSnakeTrack(track), ...(userId ? { user_id: userId } : {}) } as any;
+  // tracks テーブルには user_id カラムは無い。RLS は videos 経由で判定するため user_id は送らない。
+  const body = { ...toSnakeTrack(track) } as any;
   await sbFetch(`/rest/v1/tracks`, {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },

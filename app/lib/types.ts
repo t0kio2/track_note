@@ -8,6 +8,7 @@ export type Video = {
   thumbnailUrl: string;
   instrument?: string;
   note?: string;
+  category?: string;
   createdAt: string; // ISO8601
   updatedAt: string; // ISO8601
 };
@@ -23,4 +24,5 @@ export type TracksIndex = Record<string, Track>;
 export const STORAGE_KEYS = {
   videos: "tracknote.videos",
   tracks: "tracknote.tracks",
+  categories: "tracknote.categories",
 } as const;

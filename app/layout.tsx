@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AuthBar from "./components/AuthBar";
+import Analytics from "./components/Analytics";
+import Toast from "./components/Toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +34,8 @@ export default function RootLayout({
           <AuthBar />
         </div>
         {children}
+        <Analytics />
+        <Toast />
       </body>
     </html>
   );

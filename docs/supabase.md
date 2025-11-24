@@ -30,6 +30,7 @@ create table if not exists public.videos (
   duration_sec integer not null,
   thumbnail_url text not null,
   instrument text null,
+  category text null,
   note text null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
