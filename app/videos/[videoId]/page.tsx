@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getTrack, getVideoByVideoId, setTrack, updateVideo, updateTrackBlockSize } from "@/app/lib/storage";
-import { onAuthStateChange } from "@/app/lib/auth";
+import { getTrack, getVideoByVideoId, setTrack, updateVideo, updateTrackBlockSize, removeVideo } from "@/app/lib/storage";
+import { logEvent } from "@/app/lib/analytics";
+import { getCategory, setCategory, getAllCategories as getAllCategoriesLocal } from "@/app/lib/categories";
 import type { Track, Video } from "@/app/lib/types";
 import { thumbnailUrlFromId } from "@/app/lib/youtube";
 
@@ -13,15 +14,8 @@ export default function VideoDetailPage() {
   const router = useRouter();
   const [video, setVideo] = useState<Video | null>(null);
   const [track, setTrackState] = useState<Track | null>(null);
-  const [authed, setAuthed] = useState(false);
-
   useEffect(() => {
-    const off = onAuthStateChange((s) => setAuthed(!!s));
-    return () => off();
-  }, []);
-
-  useEffect(() => {
-    if (!videoId || !authed) return;
+    if (!videoId) return;
     (async () => {
       try {
         const [v, t] = await Promise.all([
@@ -34,7 +28,7 @@ export default function VideoDetailPage() {
         console.error(e);
       }
     })();
-  }, [videoId, authed]);
+  }, [videoId]);
 
   const blocks = track?.levels?.length ?? 0;
   const blockSizeSec = track?.blockSizeSec ?? 5;
@@ -51,11 +45,7 @@ export default function VideoDetailPage() {
     return Math.round((sum / (3 * blocks)) * 100);
   }, [track, blocks]);
 
-  const practicedSeconds = useMemo(() => {
-    if (!track) return 0;
-    const count = track.levels.filter((x) => x > 0).length;
-    return count * blockSizeSec;
-  }, [track, blockSizeSec]);
+  // 推定練習は非表示となったため削除
 
   const setLevel = (index: number, level: number) => {
     if (!track) return;
@@ -177,15 +167,6 @@ export default function VideoDetailPage() {
     stopAutoScroll();
   };
 
-  if (!authed) {
-    return (
-      <div className="mx-auto max-w-5xl p-6">
-        <Link href="/" className="text-sm text-emerald-600 hover:underline">← 戻る</Link>
-        <div className="mt-6 rounded-md border p-6">このページを表示するにはサインインが必要です。</div>
-      </div>
-    );
-  }
-
   if (!video) {
     return (
       <div className="mx-auto max-w-5xl p-6">
@@ -200,31 +181,56 @@ export default function VideoDetailPage() {
       <header className="mx-auto max-w-5xl px-4 py-4">
         <div className="flex items-center gap-3">
           <Link href="/" className="text-sm text-emerald-600 hover:underline">← 戻る</Link>
-          <Link href={`/videos/${video.videoId}/overview`} className="text-sm text-zinc-600 hover:underline">進捗確認</Link>
       </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 pb-24">
         <div className="flex flex-col gap-4 md:flex-row">
           <div className="w-full md:w-1/3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={video.thumbnailUrl || thumbnailUrlFromId(video.videoId)}
               alt={video.title}
               className="aspect-video w-full rounded-md border object-cover"
             />
           </div>
-          <div className="flex-1">
-            <h1 className="text-xl font-semibold">{video.title}</h1>
-            <div className="mt-1 text-sm text-zinc-600">
-              {formatDuration(video.durationSec)} ・ {video.instrument || "Instrument"}
+          <div className="flex-1 min-w-0">
+            <h1 className="truncate text-xl font-semibold" title={video.title}>{video.title}</h1>
+            <div className="mt-1 flex items-center gap-2 text-sm text-zinc-600">
+              <span>{formatDuration(video.durationSec)} ・ {video.instrument || "Instrument"}</span>
+              <a
+                href={video.url}
+                target="_blank"
+                rel="noreferrer"
+                title="動画を開く"
+                className="inline-flex items-center text-emerald-700 hover:text-emerald-800"
+              >
+                動画を開く
+                {/* external link icon */}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                  <path d="M14 3a1 1 0 100 2h3.586l-7.293 7.293a1 1 0 101.414 1.414L19 6.414V10a1 1 0 102 0V4a1 1 0 00-1-1h-6z"/>
+                  <path d="M5 5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4a1 1 0 10-2 0v4H5V7h4a1 1 0 100-2H5z"/>
+                </svg>
+              </a>
             </div>
             <div className="mt-3 flex items-center gap-3 text-sm">
               <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">完了率 {coverageRate}%</span>
               <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">習熟度 {proficiencyRate}%</span>
-              <span className="rounded bg-zinc-100 px-2 py-1 text-zinc-700">推定練習 {Math.round(practicedSeconds / 60)} 分</span>
-              <a href={video.url} target="_blank" className="text-emerald-700 hover:underline" rel="noreferrer">
-                動画を開く ↗
-              </a>
               <button className="rounded-md border px-2 py-1 text-zinc-700 hover:bg-zinc-50" onClick={() => setEditOpen(true)}>編集</button>
+              <button
+                className="rounded-md border px-2 py-1 text-zinc-700 hover:bg-zinc-50"
+                onClick={async () => {
+                  if (!confirm("この動画を削除しますか？")) return;
+                  try {
+                    await removeVideo(video.id, video.videoId);
+                    try { logEvent('delete_video', { video_id: video.videoId }); } catch {}
+                    router.push("/");
+                  } catch (e) {
+                    alert("削除に失敗しました");
+                  }
+                }}
+              >
+                削除
+              </button>
             </div>
           </div>
         </div>
@@ -235,7 +241,7 @@ export default function VideoDetailPage() {
             <div className="rounded-md border p-6">トラック情報がありません。</div>
           ) : (
             <div ref={scrollRef} className="overflow-x-auto rounded-md border bg-white p-3 pt-5 shadow-sm">
-              <div className="relative inline-flex items-end gap-2 select-none">
+              <div className="relative inline-flex items-start gap-2 select-none">
                 {/* 縦方向ラベル（上=高, 中=中, 下=低） */}
                 <div className="mr-1 flex flex-col items-center gap-1 text-[10px] text-zinc-500">
                   <span className="h-6 leading-6">高</span>
@@ -246,7 +252,7 @@ export default function VideoDetailPage() {
                 {/* ブロック本体 */}
                 <div
                   ref={contentRef}
-                  className="relative inline-flex items-end gap-1 pb-8"
+                  className="relative inline-flex items-start gap-1 pb-8"
                   onPointerDown={onPointerDown}
                   onPointerMove={onPointerMove}
                   onPointerUp={onPointerUp}
@@ -344,9 +350,9 @@ export default function VideoDetailPage() {
           onSaved={(patch) => {
             (async () => {
               if (typeof patch.durationSec === "number") {
-                await updateVideo(video.id, { durationSec: patch.durationSec, title: patch.title, instrument: patch.instrument, note: patch.note });
+                await updateVideo(video.id, { durationSec: patch.durationSec, title: patch.title, instrument: patch.instrument, note: patch.note, category: patch.category });
               } else {
-                await updateVideo(video.id, { title: patch.title, instrument: patch.instrument, note: patch.note });
+                await updateVideo(video.id, { title: patch.title, instrument: patch.instrument, note: patch.note, category: patch.category });
               }
               if (typeof patch.blockSizeSec === "number") {
                 await updateTrackBlockSize(video.videoId, patch.blockSizeSec);
@@ -357,6 +363,8 @@ export default function VideoDetailPage() {
               ]);
               if (nv) setVideo(nv);
               if (nt) setTrackState(nt);
+              // カテゴリはローカル保存も必要（remote時）
+              try { setCategory(video.videoId, patch.category || ""); } catch {}
             })();
             setEditOpen(false);
           }}
@@ -389,16 +397,18 @@ function formatDuration(sec?: number) {
   return `${m}:${s}`;
 }
 
-function EditDialog({ video, trackBlockSize, onClose, onSaved }: { video: Video; trackBlockSize: number; onClose: () => void; onSaved: (patch: { title?: string; instrument?: string; note?: string; durationSec?: number; blockSizeSec?: number }) => void }) {
+function EditDialog({ video, trackBlockSize, onClose, onSaved }: { video: Video; trackBlockSize: number; onClose: () => void; onSaved: (patch: { title?: string; instrument?: string; note?: string; durationSec?: number; blockSizeSec?: number; category?: string }) => void }) {
   const [title, setTitle] = useState(video.title);
   const [instrument, setInstrument] = useState(video.instrument || "");
   const [note, setNote] = useState(video.note || "");
   const [duration, setDuration] = useState<number | "">(video.durationSec ?? "");
   const [blockSize, setBlockSize] = useState<number>(trackBlockSize || 5);
+  const [category, setCategoryInput] = useState<string>(video.category || getCategory(video.videoId) || "");
   const [saving, setSaving] = useState(false);
+  const categoryOptions = getAllCategoriesLocal();
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-lg">
+    <div className="fixed inset-0 z-50 grid items-start justify-center overflow-y-auto bg-black/40 p-4">
+      <div className="mt-16 w-full max-w-md rounded-lg bg-white p-4 shadow-lg">
         <h3 className="mb-3 text-lg font-medium">動画情報を編集</h3>
         <div className="space-y-3">
           <label className="block">
@@ -408,6 +418,15 @@ function EditDialog({ video, trackBlockSize, onClose, onSaved }: { video: Video;
           <label className="block">
             <span className="mb-1 block text-sm">楽器</span>
             <input className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" value={instrument} onChange={(e) => setInstrument(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm">カテゴリー</span>
+            <input className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" value={category} onChange={(e) => setCategoryInput(e.target.value)} list="edit-category-suggest" />
+            <datalist id="edit-category-suggest">
+              {categoryOptions.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </label>
           <label className="block">
             <span className="mb-1 block text-sm">メモ</span>
@@ -441,6 +460,7 @@ function EditDialog({ video, trackBlockSize, onClose, onSaved }: { video: Video;
                   note: note.trim() || undefined,
                   durationSec: typeof duration === "number" ? Math.max(1, Math.floor(duration)) : undefined,
                   blockSizeSec: blockSize,
+                  category: category.trim() || "",
                 });
               } finally {
                 setSaving(false);

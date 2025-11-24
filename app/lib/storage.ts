@@ -11,6 +11,19 @@ import {
   deleteVideoRemote,
   upsertTrackRemote,
 } from "./storage-remote";
+import {
+  fetchAllVideosLocal,
+  fetchTrackLocal,
+  fetchVideoLocal,
+  insertVideoLocal,
+  updateVideoLocal,
+  deleteVideoLocal,
+  upsertTrackLocal,
+} from "./storage-local";
+import { supabaseEnabled } from "./supabase-rest";
+import { setCategory as setLocalCategory } from "./categories";
+import { fetchVideoByIdRemote } from "./storage-remote";
+import { getAccessToken } from "./auth";
 
 function nowISO() {
   return new Date().toISOString();
@@ -24,65 +37,103 @@ function uuid() {
 }
 
 // --- Remote-only API ---
+async function canUseRemote(): Promise<boolean> {
+  try {
+    if (!supabaseEnabled()) return false;
+    const token = await getAccessToken();
+    return !!token;
+  } catch {
+    return false;
+  }
+}
+
 export async function getVideos(): Promise<Video[]> {
-  return await fetchAllVideosRemote();
+  if (await canUseRemote()) return await fetchAllVideosRemote();
+  return await fetchAllVideosLocal();
 }
 
 export async function getVideoByVideoId(videoId: string): Promise<Video | undefined> {
-  const v = await fetchVideoRemote(videoId);
+  if (await canUseRemote()) {
+    const v = await fetchVideoRemote(videoId);
+    return v ?? undefined;
+  }
+  const v = await fetchVideoLocal(videoId);
   return v ?? undefined;
 }
 
 export async function getTrack(videoId: string): Promise<Track | null> {
-  return await fetchTrackRemote(videoId);
+  if (await canUseRemote()) return await fetchTrackRemote(videoId);
+  return await fetchTrackLocal(videoId);
 }
 
 export async function setTrack(track: Track): Promise<void> {
-  await upsertTrackRemote(track);
+  if (await canUseRemote()) return await upsertTrackRemote(track);
+  return await upsertTrackLocal(track);
 }
 
 export async function removeVideo(id: string, videoId: string): Promise<void> {
-  await deleteVideoRemote(id, videoId);
+  if (await canUseRemote()) return await deleteVideoRemote(id, videoId);
+  return await deleteVideoLocal(id, videoId);
 }
 
-export async function updateVideo(id: string, patch: Partial<Pick<Video, "title" | "instrument" | "note" | "durationSec">>): Promise<void> {
+export async function updateVideo(id: string, patch: Partial<Pick<Video, "title" | "instrument" | "note" | "durationSec" | "category">>): Promise<void> {
   const updatedAt = nowISO();
-  await updateVideoRemoteApi(id, { ...(patch as any), updatedAt } as any);
+  if (await canUseRemote()) {
+    const { category, ...rest } = patch as any;
+    await updateVideoRemoteApi(id, { ...(rest as any), updatedAt } as any);
+    // カテゴリはローカルに保持
+    try {
+      if (category !== undefined) {
+        const v = await fetchVideoByIdRemote(id);
+        if (v?.videoId) setLocalCategory(v.videoId, category);
+      }
+    } catch {}
+  } else {
+    await updateVideoLocal(id, { ...(patch as any), updatedAt } as any);
+  }
 }
 
-export async function addVideo(params: { url: string; title?: string; instrument?: string; durationSec?: number; blockSizeSec?: number }): Promise<Video> {
+export async function addVideo(params: { url: string; title?: string; instrument?: string; durationSec?: number; blockSizeSec?: number; category?: string }): Promise<Video> {
   const url = normalizeYouTubeUrl(params.url);
   const videoId = extractYouTubeId(url);
   if (!videoId) throw new Error("YouTube の URL ではないようです");
+  if (await canUseRemote()) {
+    const exist = await fetchVideoRemote(videoId);
+    if (exist) return exist;
 
-  const exist = await fetchVideoRemote(videoId);
-  if (exist) return exist;
+    const createdAt = nowISO();
+    const v: Video = {
+      id: uuid(),
+      provider: "youtube",
+      videoId,
+      url,
+      title: params.title?.trim() || `YouTube ${videoId}`,
+      durationSec: typeof params.durationSec === "number" ? Math.max(1, Math.floor(params.durationSec)) : 180,
+      thumbnailUrl: thumbnailUrlFromId(videoId),
+      instrument: params.instrument?.trim() || undefined,
+      category: params.category?.trim() || undefined,
+      createdAt,
+      updatedAt: createdAt,
+    };
+    const inserted = await insertVideoRemote(v);
+    if (v.category) {
+      try { setLocalCategory(inserted.videoId, v.category); } catch {}
+    }
 
-  const createdAt = nowISO();
-  const v: Video = {
-    id: uuid(),
-    provider: "youtube",
-    videoId,
-    url,
-    title: params.title?.trim() || `YouTube ${videoId}`,
-    durationSec: typeof params.durationSec === "number" ? Math.max(1, Math.floor(params.durationSec)) : 180,
-    thumbnailUrl: thumbnailUrlFromId(videoId),
-    instrument: params.instrument?.trim() || undefined,
-    createdAt,
-    updatedAt: createdAt,
-  };
-  const inserted = await insertVideoRemote(v);
+    // Track 初期化
+    const blockSizeSec = params.blockSizeSec && params.blockSizeSec > 0 ? Math.floor(params.blockSizeSec) : 5;
+    const blocks = Math.ceil(inserted.durationSec / blockSizeSec);
+    const track: Track = {
+      videoId: inserted.videoId,
+      blockSizeSec,
+      levels: Array.from({ length: blocks }, () => 0),
+    };
+    await setTrack(track);
+    return inserted;
+  }
 
-  // Track 初期化
-  const blockSizeSec = params.blockSizeSec && params.blockSizeSec > 0 ? Math.floor(params.blockSizeSec) : 5;
-  const blocks = Math.ceil(inserted.durationSec / blockSizeSec);
-  const track: Track = {
-    videoId: inserted.videoId,
-    blockSizeSec,
-    levels: Array.from({ length: blocks }, () => 0),
-  };
-  await setTrack(track);
-  return inserted;
+  // Local (guest)
+  return await insertVideoLocal({ url, title: params.title, instrument: params.instrument, durationSec: params.durationSec, category: params.category });
 }
 
 // --- ブロック変換ユーティリティ ---

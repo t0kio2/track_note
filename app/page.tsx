@@ -4,17 +4,25 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Video } from "./lib/types";
-import { addVideo, getTrack, getVideos, removeVideo } from "./lib/storage";
-import { onAuthStateChange } from "./lib/auth";
+import { addVideo, getTrack, getVideos } from "./lib/storage";
+import { onAuthStateChange, signInWithGoogle } from "./lib/auth";
 import { thumbnailUrlFromId } from "./lib/youtube";
+import { getCategory as getLocalCategory, getAllCategories as getLocalCategories } from "./lib/categories";
 import { getYouTubeDurationSeconds } from "./lib/yt-iframe";
 import { fetchYouTubeTitle } from "./lib/yt-oembed";
+import { logEvent } from "./lib/analytics";
 
 export default function Home() {
   const router = useRouter();
   const [videos, setVideos] = useState<Video[]>([]);
   const [open, setOpen] = useState(false);
   const [authed, setAuthed] = useState(false);
+  const [catRev, setCatRev] = useState(0);
+  const categoryOptions = useMemo(() => {
+    const fromLocal = getLocalCategories();
+    const fromVideos = Array.from(new Set(videos.map((v) => v.category).filter((x): x is string => !!x)));
+    return Array.from(new Set([...fromLocal, ...fromVideos])).sort((a, b) => a.localeCompare(b));
+  }, [videos, catRev]);
 
   useEffect(() => {
     // 認証状態を監視
@@ -27,10 +35,6 @@ export default function Home() {
   useEffect(() => {
     (async () => {
       try {
-        if (!authed) {
-          setVideos([]);
-          return;
-        }
         const list = await getVideos();
         setVideos(list);
       } catch (e) {
@@ -39,21 +43,23 @@ export default function Home() {
     })();
   }, [authed]);
 
+  useEffect(() => {
+    const onCat = () => setCatRev((x) => x + 1);
+    window.addEventListener("tracknote-category-changed", onCat);
+    return () => window.removeEventListener("tracknote-category-changed", onCat);
+  }, []);
+
   const handleAdded = async (v: Video | null) => {
     setOpen(false);
     if (v) {
       const list = await getVideos();
       setVideos(list);
+      try { logEvent('add_video', { provider: v.provider, video_id: v.videoId }); } catch {}
       router.push(`/videos/${v.videoId}`);
     }
   };
 
-  const onDelete = async (id: string, videoId: string) => {
-    if (!confirm("この動画を削除しますか？")) return;
-    await removeVideo(id, videoId);
-    const list = await getVideos();
-    setVideos(list);
-  };
+  const guestLimitReached = !authed && videos.length >= 3;
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
@@ -67,23 +73,53 @@ export default function Home() {
           <button
             className="rounded-md bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700"
             onClick={() => setOpen(true)}
+            disabled={guestLimitReached}
           >
             ＋ 追加
           </button>
         </div>
 
-        {!authed ? (
-          <div className="rounded-lg border border-dashed p-10 text-center text-zinc-600">
-            データ取得にはサインインが必要です。右上からサインインしてください。
+        {guestLimitReached && (
+          <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900">
+            ゲストモードでは3件まで登録できます。これ以上登録する場合はアカウント登録してください。
+            <button
+              className="ml-3 inline-flex items-center rounded-md border border-amber-400 bg-white px-2 py-1 text-sm hover:bg-amber-100"
+              onClick={() => signInWithGoogle()}
+            >
+              アカウント登録 / ログイン
+            </button>
           </div>
-        ) : videos.length === 0 ? (
+        )}
+
+        {!videos.length ? (
           <div className="rounded-lg border border-dashed p-10 text-center text-zinc-600">
-            まず「＋ 追加」から YouTube URL を登録してください
+            <p className="mb-2">YouTube のタブ譜付き演奏動画を登録して、練習の進捗を可視化できます。</p>
+            <p className="mb-2">すぐ使い始めたい場合は、未ログインでもゲストモードで利用できます（最大3件まで保存）。</p>
+            <p>右上からログインすると、データを保存・同期できます。</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {videos.map((v) => (
-              <article key={v.id} className="overflow-hidden rounded-lg border bg-white shadow-sm flex sm:block">
+          (() => {
+            const groups = new Map<string, Video[]>();
+            const titleOf = (v: Video) => v.category || getLocalCategory(v.videoId) || "";
+            for (const v of videos) {
+              const cat = titleOf(v);
+              const key = cat.trim() || "__none__";
+              if (!groups.has(key)) groups.set(key, []);
+              groups.get(key)!.push(v);
+            }
+            const keys = Array.from(groups.keys()).sort((a, b) => {
+              if (a === "__none__" && b !== "__none__") return 1;
+              if (a !== "__none__" && b === "__none__") return -1;
+              return a.localeCompare(b);
+            });
+            return (
+              <div className="space-y-6">
+                {keys.map((k) => (
+                  <section key={k}>
+                    <h3 className="mb-2 text-sm font-medium text-zinc-700">{k === "__none__" ? "カテゴリーなし" : k}</h3>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {groups.get(k)!.map((v) => (
+                        <article key={v.id} className="overflow-hidden rounded-lg border bg-white shadow-sm flex sm:block">
                 <Link href={`/videos/${v.videoId}`}>
                   {/* use img for remote thumbnail to avoid Next/Image config */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -95,29 +131,35 @@ export default function Home() {
                 </Link>
                 <div className="p-3 min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <Link href={`/videos/${v.videoId}`} className="font-medium hover:underline">
+                    <div className="min-w-0">
+                      <Link href={`/videos/${v.videoId}`} className="font-medium hover:underline block truncate" title={v.title}>
                         {v.title || v.videoId}
                       </Link>
-                      <div className="text-xs text-zinc-500">{formatDuration(v.durationSec)} / {v.provider}</div>
+                      <div className="flex items-center gap-2 text-xs text-zinc-500">
+                        <span>{formatDuration(v.durationSec)} / {v.provider}</span>
+                        {(v.category || getLocalCategory(v.videoId)) && (
+                          <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-700">
+                            {v.category || getLocalCategory(v.videoId)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <button
-                      className="rounded-md border px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50"
-                      onClick={() => onDelete(v.id, v.videoId)}
-                    >
-                      削除
-                    </button>
                   </div>
                   {/* 進捗ゲージ（完了/習熟） */}
                   <CardMetrics videoId={v.videoId} />
                 </div>
               </article>
-            ))}
-          </div>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            );
+          })()
         )}
       </main>
 
-      {open && <AddDialog onClose={() => setOpen(false)} onAdded={handleAdded} />}
+      {open && <AddDialog authed={authed} categories={categoryOptions} onClose={() => setOpen(false)} onAdded={handleAdded} />}
     </div>
   );
 }
@@ -134,9 +176,13 @@ function formatDuration(sec?: number) {
 }
 
 function AddDialog({
+  authed,
+  categories,
   onClose,
   onAdded,
 }: {
+  authed: boolean;
+  categories: string[];
   onClose: () => void;
   onAdded: (v: Video | null) => void;
 }) {
@@ -145,6 +191,7 @@ function AddDialog({
   const [autoTitleLoading, setAutoTitleLoading] = useState(false);
   const [userEditedTitle, setUserEditedTitle] = useState(false);
   const [instrument, setInstrument] = useState("");
+  const [category, setCategory] = useState("");
   const [duration, setDuration] = useState<number | "">(180);
   const [gettingDur, setGettingDur] = useState(false);
   const [userEditedDuration, setUserEditedDuration] = useState(false);
@@ -155,7 +202,7 @@ function AddDialog({
     if (!valid) return;
     try {
       setSaving(true);
-      const v = await addVideo({ url, title: title.trim(), instrument: instrument.trim(), durationSec: typeof duration === "number" ? duration : undefined });
+      const v = await addVideo({ url, title: title.trim(), instrument: instrument.trim(), category: category.trim() || undefined, durationSec: typeof duration === "number" ? duration : undefined });
       onAdded(v);
     } catch (e: any) {
       alert(e?.message || "登録に失敗しました");
@@ -166,9 +213,20 @@ function AddDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-lg">
+    <div className="fixed inset-0 z-50 grid items-start justify-center overflow-y-auto bg-black/40 p-4">
+      <div className="mt-16 w-full max-w-md rounded-lg bg-white p-4 shadow-lg">
         <h3 className="mb-3 text-lg font-medium">動画を追加</h3>
+        {!authed && (
+          <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900 text-sm">
+            ゲストモードで登録しています。ブラウザやタブを閉じるとデータは消えます。最大3件まで登録できます。
+            <button
+              className="ml-2 inline-flex items-center rounded-md border border-amber-400 bg-white px-2 py-0.5 text-sm hover:bg-amber-100"
+              onClick={() => signInWithGoogle()}
+            >
+              アカウント登録 / ログイン
+            </button>
+          </div>
+        )}
         <div className="space-y-3">
           <label className="block">
             <span className="mb-1 block text-sm">YouTube URL</span>
@@ -203,6 +261,21 @@ function AddDialog({
               value={instrument}
               onChange={(e) => setInstrument(e.target.value)}
             />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm">カテゴリー（任意）</span>
+            <input
+              className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="例: 練習中 / 本命 / ジャンル名"
+              list="category-suggest"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            />
+            <datalist id="category-suggest">
+              {categories.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </label>
           <label className="block">
             <span className="mb-1 block text-sm">動画長（秒・任意）</span>

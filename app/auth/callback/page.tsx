@@ -12,6 +12,7 @@ export default function AuthCallback() {
         const supabase = getSupabaseClient();
         // URL の code をセッションに交換
         await supabase.auth.exchangeCodeForSession(window.location.href);
+        try { sessionStorage.setItem("tracknote.auth.justSignedIn", "1"); } catch {}
       } catch {
         // noop
       } finally {
@@ -23,4 +24,3 @@ export default function AuthCallback() {
     <div className="mx-auto max-w-md p-6 text-center text-sm text-zinc-600">認証処理中…</div>
   );
 }
-
