@@ -81,7 +81,18 @@ export default function AuthBar() {
                 </svg>
               </button>
               {menuOpen && (
-                <div role="menu" className="absolute right-0 z-50 mt-2 w-40 overflow-hidden rounded-md border bg-white shadow-lg">
+                <div role="menu" className="absolute right-0 z-50 mt-2 w-44 overflow-hidden rounded-md border bg-white shadow-lg">
+                  <a
+                    role="menuitem"
+                    href="https://forms.gle/uHT1achWiPJh68hK6"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    お問い合わせ
+                  </a>
+                  <div className="my-1 h-px bg-zinc-200" />
                   <button
                     role="menuitem"
                     className="block w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
