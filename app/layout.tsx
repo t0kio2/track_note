@@ -4,6 +4,7 @@ import "./globals.css";
 import AuthBar from "./components/AuthBar";
 import Analytics from "./components/Analytics";
 import { Suspense } from "react";
+import pkg from "../package.json";
 import Toast from "./components/Toast";
 
 const geistSans = Geist({
@@ -26,6 +27,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const year = new Date().getFullYear();
+  const version = process.env.NEXT_PUBLIC_APP_VERSION || (pkg as any).version || "0.0.0";
   return (
     <html lang="en">
       <body
@@ -35,6 +38,11 @@ export default function RootLayout({
           <AuthBar />
         </div>
         {children}
+        <footer className="mt-10 border-t">
+          <div className="mx-auto max-w-5xl px-4 py-6 text-center text-xs text-zinc-500">
+            © {year} TrackNote · v{version}
+          </div>
+        </footer>
         <Suspense fallback={null}>
           <Analytics />
         </Suspense>
