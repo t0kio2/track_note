@@ -17,9 +17,43 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+
 export const metadata: Metadata = {
-  title: "TrackNote",
-  description: "",
+  title: {
+    default: "TrackNote",
+    template: "%s | TrackNote",
+  },
+  description: "YouTube のタブ譜動画で練習進捗を記録・管理できるアプリ",
+  metadataBase: siteUrl ? new URL(siteUrl) : undefined,
+  alternates: {
+    canonical: siteUrl ? "/" : undefined,
+  },
+  openGraph: {
+    type: "website",
+    url: siteUrl || undefined,
+    siteName: "TrackNote",
+    title: "TrackNote",
+    description: "YouTube のタブ譜動画で練習進捗を記録・管理",
+    images: [
+      { url: "/logo.png", width: 574, height: 574, alt: "TrackNote" },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@",
+    creator: "@",
+    title: "TrackNote",
+    description: "YouTube のタブ譜動画で練習進捗を記録・管理",
+    images: ["/logo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
@@ -34,11 +68,24 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* JSON-LD structured data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              name: "TrackNote",
+              url: siteUrl || undefined,
+              applicationCategory: "Music",
+            }),
+          }}
+        />
         <div className="mx-auto max-w-5xl px-4 py-2">
           <AuthBar />
         </div>
         {children}
-        <footer className="mt-10 border-t">
+        <footer className="mt-10">
           <div className="mx-auto max-w-5xl px-4 py-6 text-center text-xs text-zinc-500">
             © {year} TrackNote · v{version}
           </div>
