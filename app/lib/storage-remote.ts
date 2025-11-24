@@ -2,6 +2,7 @@
 
 import type { Track, Video } from "./types";
 import { sbFetch, supabaseEnabled } from "./supabase-rest";
+import { getUserId } from "./auth";
 
 function toSnakeVideo(v: Video) {
   return {
@@ -57,19 +58,19 @@ export function isRemoteEnabled() {
 
 // ---- Reads ----
 export async function fetchAllVideosRemote(): Promise<Video[]> {
-  const rows = await sbFetch(`/rest/v1/videos?select=*&order=created_at.desc`);
+  const rows = await sbFetch(`/rest/v1/videos?select=*&order=created_at.desc`, { requireAuth: true });
   return (rows as any[]).map(fromSnakeVideo);
 }
 
 export async function fetchVideoRemote(videoId: string): Promise<Video | null> {
-  const rows = await sbFetch(`/rest/v1/videos?select=*&video_id=eq.${encodeURIComponent(videoId)}&limit=1`);
+  const rows = await sbFetch(`/rest/v1/videos?select=*&video_id=eq.${encodeURIComponent(videoId)}&limit=1`, { requireAuth: true });
   const arr = rows as any[];
   if (!arr.length) return null;
   return fromSnakeVideo(arr[0]);
 }
 
 export async function fetchTrackRemote(videoId: string): Promise<Track | null> {
-  const rows = await sbFetch(`/rest/v1/tracks?select=*&video_id=eq.${encodeURIComponent(videoId)}&limit=1`);
+  const rows = await sbFetch(`/rest/v1/tracks?select=*&video_id=eq.${encodeURIComponent(videoId)}&limit=1`, { requireAuth: true });
   const arr = rows as any[];
   if (!arr.length) return null;
   return fromSnakeTrack(arr[0]);
@@ -77,10 +78,13 @@ export async function fetchTrackRemote(videoId: string): Promise<Track | null> {
 
 // ---- Mutations ----
 export async function insertVideoRemote(v: Video): Promise<Video> {
+  const userId = await getUserId().catch(() => null);
+  const body = { ...toSnakeVideo(v), ...(userId ? { user_id: userId } : {}) } as any;
   const rows = await sbFetch(`/rest/v1/videos`, {
     method: "POST",
     headers: { Prefer: "return=representation" },
-    body: toSnakeVideo(v),
+    body,
+    requireAuth: true,
   });
   return fromSnakeVideo((rows as any[])[0]);
 }
@@ -97,6 +101,7 @@ export async function updateVideoRemote(id: string, patch: Partial<Video>): Prom
     method: "PATCH",
     headers: { Prefer: "return=minimal" },
     body: snake,
+    requireAuth: true,
   });
 }
 
@@ -104,18 +109,22 @@ export async function deleteVideoRemote(id: string, videoId: string): Promise<vo
   // 先に tracks を削除
   await sbFetch(`/rest/v1/tracks?video_id=eq.${encodeURIComponent(videoId)}`, {
     method: "DELETE",
+    requireAuth: true,
   }).catch(() => {});
   // videos 削除
   await sbFetch(`/rest/v1/videos?id=eq.${encodeURIComponent(id)}`, {
     method: "DELETE",
+    requireAuth: true,
   });
 }
 
 export async function upsertTrackRemote(track: Track): Promise<void> {
+  const userId = await getUserId().catch(() => null);
+  const body = { ...toSnakeTrack(track), ...(userId ? { user_id: userId } : {}) } as any;
   await sbFetch(`/rest/v1/tracks`, {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: toSnakeTrack(track),
+    body,
+    requireAuth: true,
   });
 }
-

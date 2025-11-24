@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Video } from "./lib/types";
 import { addVideo, getTrack, getVideos, removeVideo } from "./lib/storage";
+import { onAuthStateChange } from "./lib/auth";
 import { thumbnailUrlFromId } from "./lib/youtube";
 import { getYouTubeDurationSeconds } from "./lib/yt-iframe";
 import { fetchYouTubeTitle } from "./lib/yt-oembed";
@@ -13,17 +14,30 @@ export default function Home() {
   const router = useRouter();
   const [videos, setVideos] = useState<Video[]>([]);
   const [open, setOpen] = useState(false);
+  const [authed, setAuthed] = useState(false);
+
+  useEffect(() => {
+    // 認証状態を監視
+    const off = onAuthStateChange((s) => {
+      setAuthed(!!s);
+    });
+    return () => off();
+  }, []);
 
   useEffect(() => {
     (async () => {
       try {
+        if (!authed) {
+          setVideos([]);
+          return;
+        }
         const list = await getVideos();
         setVideos(list);
       } catch (e) {
         console.error(e);
       }
     })();
-  }, []);
+  }, [authed]);
 
   const handleAdded = async (v: Video | null) => {
     setOpen(false);
@@ -58,7 +72,11 @@ export default function Home() {
           </button>
         </div>
 
-        {videos.length === 0 ? (
+        {!authed ? (
+          <div className="rounded-lg border border-dashed p-10 text-center text-zinc-600">
+            データ取得にはサインインが必要です。右上からサインインしてください。
+          </div>
+        ) : videos.length === 0 ? (
           <div className="rounded-lg border border-dashed p-10 text-center text-zinc-600">
             まず「＋ 追加」から YouTube URL を登録してください
           </div>
@@ -68,6 +86,7 @@ export default function Home() {
               <article key={v.id} className="overflow-hidden rounded-lg border bg-white shadow-sm flex sm:block">
                 <Link href={`/videos/${v.videoId}`}>
                   {/* use img for remote thumbnail to avoid Next/Image config */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={v.thumbnailUrl || thumbnailUrlFromId(v.videoId)}
                     alt={v.title}

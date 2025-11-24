@@ -10,6 +10,8 @@ create extension if not exists moddatetime with schema extensions;
 -- videos table
 create table if not exists public.videos (
   id uuid primary key default gen_random_uuid(),
+  -- 行の所有者（Supabase Auth のユーザー）
+  user_id uuid not null references auth.users(id),
   provider text not null check (provider = 'youtube'),
   video_id text not null unique,
   url text not null,
@@ -35,27 +37,101 @@ create table if not exists public.tracks (
   levels jsonb not null
 );
 
--- RLS: enable and allow anon full access for local dev
+-- RLS: enable (row-level security)
 alter table public.videos enable row level security;
 alter table public.tracks enable row level security;
 
--- policies for anon (broad permissions for local development)
+-- 既存ポリシーを全削除（存在しなくてもOK）
 drop policy if exists "anon select videos" on public.videos;
 drop policy if exists "anon insert videos" on public.videos;
 drop policy if exists "anon update videos" on public.videos;
 drop policy if exists "anon delete videos" on public.videos;
-
-create policy "anon select videos" on public.videos for select using (true);
-create policy "anon insert videos" on public.videos for insert with check (true);
-create policy "anon update videos" on public.videos for update using (true);
-create policy "anon delete videos" on public.videos for delete using (true);
+drop policy if exists "auth select videos" on public.videos;
+drop policy if exists "auth insert videos" on public.videos;
+drop policy if exists "auth update videos" on public.videos;
+drop policy if exists "auth delete videos" on public.videos;
 
 drop policy if exists "anon select tracks" on public.tracks;
 drop policy if exists "anon insert tracks" on public.tracks;
 drop policy if exists "anon update tracks" on public.tracks;
 drop policy if exists "anon delete tracks" on public.tracks;
+drop policy if exists "auth select tracks" on public.tracks;
+drop policy if exists "auth insert tracks" on public.tracks;
+drop policy if exists "auth update tracks" on public.tracks;
+drop policy if exists "auth delete tracks" on public.tracks;
 
-create policy "anon select tracks" on public.tracks for select using (true);
-create policy "anon insert tracks" on public.tracks for insert with check (true);
-create policy "anon update tracks" on public.tracks for update using (true);
-create policy "anon delete tracks" on public.tracks for delete using (true);
+-- Row ownership: videos
+-- 自分の user_id の行だけ読める
+create policy "videos_select_own"
+  on public.videos
+  for select
+  using (user_id = auth.uid());
+
+-- 自分の user_id の行だけ INSERT できる
+create policy "videos_insert_own"
+  on public.videos
+  for insert
+  with check (user_id = auth.uid());
+
+-- 自分の user_id の行だけ UPDATE できる
+create policy "videos_update_own"
+  on public.videos
+  for update
+  using (user_id = auth.uid());
+
+-- 自分の user_id の行だけ DELETE できる
+create policy "videos_delete_own"
+  on public.videos
+  for delete
+  using (user_id = auth.uid());
+
+-- Row ownership: tracks
+-- 紐づく videos の user_id が自分のものだけアクセス可
+
+create policy "tracks_select_own"
+  on public.tracks
+  for select
+  using (
+    exists (
+      select 1
+      from public.videos v
+      where v.video_id = tracks.video_id
+        and v.user_id = auth.uid()
+    )
+  );
+
+create policy "tracks_insert_own"
+  on public.tracks
+  for insert
+  with check (
+    exists (
+      select 1
+      from public.videos v
+      where v.video_id = tracks.video_id
+        and v.user_id = auth.uid()
+    )
+  );
+
+create policy "tracks_update_own"
+  on public.tracks
+  for update
+  using (
+    exists (
+      select 1
+      from public.videos v
+      where v.video_id = tracks.video_id
+        and v.user_id = auth.uid()
+    )
+  );
+
+create policy "tracks_delete_own"
+  on public.tracks
+  for delete
+  using (
+    exists (
+      select 1
+      from public.videos v
+      where v.video_id = tracks.video_id
+        and v.user_id = auth.uid()
+    )
+  );

@@ -29,6 +29,11 @@ export async function getAccessToken(): Promise<string | null> {
   return s?.access_token ?? null;
 }
 
+export async function getUserId(): Promise<string | null> {
+  const s = await getSession();
+  return (s as any)?.user?.id ?? null;
+}
+
 export function onAuthStateChange(cb: (session: any | null) => void) {
   const supabase = getSupabaseClient();
   // 初期セッションを即時通知
