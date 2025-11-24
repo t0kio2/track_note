@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getTrack, getVideoByVideoId, setTrack, updateVideo, updateTrackBlockSize } from "@/app/lib/storage";
+import { onAuthStateChange } from "@/app/lib/auth";
 import type { Track, Video } from "@/app/lib/types";
 import { thumbnailUrlFromId } from "@/app/lib/youtube";
 
@@ -12,9 +13,15 @@ export default function VideoDetailPage() {
   const router = useRouter();
   const [video, setVideo] = useState<Video | null>(null);
   const [track, setTrackState] = useState<Track | null>(null);
+  const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
-    if (!videoId) return;
+    const off = onAuthStateChange((s) => setAuthed(!!s));
+    return () => off();
+  }, []);
+
+  useEffect(() => {
+    if (!videoId || !authed) return;
     (async () => {
       try {
         const [v, t] = await Promise.all([
@@ -27,7 +34,7 @@ export default function VideoDetailPage() {
         console.error(e);
       }
     })();
-  }, [videoId]);
+  }, [videoId, authed]);
 
   const blocks = track?.levels?.length ?? 0;
   const blockSizeSec = track?.blockSizeSec ?? 5;
@@ -169,6 +176,15 @@ export default function VideoDetailPage() {
     // バーは常に表示したいので座標は保持したままにする
     stopAutoScroll();
   };
+
+  if (!authed) {
+    return (
+      <div className="mx-auto max-w-5xl p-6">
+        <Link href="/" className="text-sm text-emerald-600 hover:underline">← 戻る</Link>
+        <div className="mt-6 rounded-md border p-6">このページを表示するにはサインインが必要です。</div>
+      </div>
+    );
+  }
 
   if (!video) {
     return (

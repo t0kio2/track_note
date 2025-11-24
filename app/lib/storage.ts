@@ -18,7 +18,6 @@ function nowISO() {
 
 function uuid() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    // @ts-ignore
     return crypto.randomUUID();
   }
   return `id_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
