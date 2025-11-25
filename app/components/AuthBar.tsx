@@ -7,8 +7,11 @@ import { onAuthStateChange, signInWithGoogle, signOut } from "@/app/lib/auth";
 import { clearGuestData, isGuestStarted } from "@/app/lib/storage-local";
 import { showToast } from "@/app/lib/toast";
 import { logEvent } from "@/app/lib/analytics";
+import { useT, useLocale } from "@/app/components/LocaleProvider";
 
 export default function AuthBar() {
+  const t = useT();
+  const locale = useLocale();
   const [email, setEmail] = useState<string | null>(null);
   const [guest, setGuest] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -26,7 +29,7 @@ export default function AuthBar() {
         try {
           const flag = sessionStorage.getItem("tracknote.auth.justSignedIn");
           if (flag === "1") {
-            showToast("ログインしました");
+            showToast(t("auth.toast_signed_in"));
             try { logEvent('login'); } catch {}
             sessionStorage.removeItem("tracknote.auth.justSignedIn");
           }
@@ -72,7 +75,7 @@ export default function AuthBar() {
               <button
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
-                aria-label="メニュー"
+                aria-label={t("auth.menu")}
                 className="p-2 text-zinc-50 hover:bg-zinc-100"
                 onClick={() => setMenuOpen((v) => !v)}
               >
@@ -90,7 +93,7 @@ export default function AuthBar() {
                     className="block w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
                     onClick={() => setMenuOpen(false)}
                   >
-                    お問い合わせ
+                    {t("auth.contact")}
                   </a>
                   <div className="my-1 h-px bg-zinc-200" />
                   <button
@@ -99,12 +102,19 @@ export default function AuthBar() {
                     onClick={async () => {
                       setMenuOpen(false);
                       await signOut();
-                      showToast("ログアウトしました");
+                      showToast(t("auth.toast_signed_out"));
                       try { logEvent('logout'); } catch {}
                     }}
                   >
-                    ログアウト
+                    {t("auth.logout")}
                   </button>
+                  <div className="my-1 h-px bg-zinc-200" />
+                  <a
+                    className="block w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                    href={`/locale/set?lang=${locale === "ja" ? "en" : "ja"}`}
+                  >
+                    {locale === "ja" ? "English" : "日本語"}
+                  </a>
                 </div>
               )}
             </div>
@@ -113,11 +123,14 @@ export default function AuthBar() {
           <>
             {guest && (
               <span className="rounded bg-amber-200/80 px-2 py-1 text-amber-900">
-                ゲストモード
+                {t("auth.guest")}
               </span>
             )}
+            <a className="rounded-md border px-2 py-1 hover:bg-zinc-600" href={`/locale/set?lang=${locale === "ja" ? "en" : "ja"}`}>
+              {locale === "ja" ? "English" : "日本語"}
+            </a>
             <button className="rounded-md border px-2 py-1 hover:bg-zinc-600" onClick={() => signInWithGoogle()}>
-              Google でログイン
+              {t("auth.login_google")}
             </button>
           </>
         )}
