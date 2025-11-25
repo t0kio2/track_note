@@ -11,8 +11,10 @@ import { getCategory as getLocalCategory, getAllCategories as getLocalCategories
 import { getYouTubeDurationSeconds } from "./lib/yt-iframe";
 import { fetchYouTubeTitle } from "./lib/yt-oembed";
 import { logEvent } from "./lib/analytics";
+import { useT } from "./components/LocaleProvider";
 
 export default function Home() {
+  const t = useT();
   const router = useRouter();
   const [videos, setVideos] = useState<Video[]>([]);
   const [open, setOpen] = useState(false);
@@ -65,38 +67,50 @@ export default function Home() {
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <header className="mx-auto max-w-5xl px-4 py-6">
         <h1 className="text-2xl font-semibold">TrackNote</h1>
-        <p className="text-sm text-zinc-600">YouTube のタブ譜動画で練習進捗を記録</p>
+        <p className="text-sm text-zinc-600">{t("home.subtitle")}</p>
       </header>
       <main className="mx-auto max-w-5xl px-4 pb-24">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-medium">練習曲一覧</h2>
+          <h2 className="text-lg font-medium">{t("home.list_title")}</h2>
           <button
             className="rounded-md bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700"
             onClick={() => setOpen(true)}
             disabled={guestLimitReached}
           >
-            ＋ 追加
+            {t("common.add")}
           </button>
         </div>
 
         {guestLimitReached && (
           <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900">
-            ゲストモードでは3件まで登録できます。これ以上登録する場合はアカウント登録してください。
+            {t("home.guest_limit")}
             <button
               className="ml-3 inline-flex items-center rounded-md border border-amber-400 bg-white px-2 py-1 text-sm hover:bg-amber-100"
               onClick={() => signInWithGoogle()}
             >
-              アカウント登録 / ログイン
+              {t("home.register_login")}
             </button>
           </div>
         )}
 
         {!videos.length ? (
-          <div className="rounded-lg border border-dashed p-10 text-center text-zinc-600">
-            <p className="mb-2">YouTube のタブ譜付き演奏動画を登録して、練習の進捗を可視化できます。</p>
-            <p className="mb-2">すぐ使い始めたい場合は、未ログインでもゲストモードで利用できます（最大3件まで保存）。</p>
-            <p>右上からログインすると、データを保存・同期できます。</p>
-          </div>
+          authed ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-8 text-center text-zinc-700">
+              <p className="mb-4">{t("home.empty_auth.1")}</p>
+              <button
+                className="rounded-md bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
+                onClick={() => setOpen(true)}
+              >
+                {t("video.add")}
+              </button>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed p-10 text-center text-zinc-600">
+              <p className="mb-2">{t("home.empty.1")}</p>
+              <p className="mb-2">{t("home.empty.2")}</p>
+              <p>{t("home.empty.3")}</p>
+            </div>
+          )
         ) : (
           (() => {
             const groups = new Map<string, Video[]>();
@@ -116,39 +130,63 @@ export default function Home() {
               <div className="space-y-6">
                 {keys.map((k) => (
                   <section key={k}>
-                    <h3 className="mb-2 text-sm font-medium text-zinc-700">{k === "__none__" ? "カテゴリーなし" : k}</h3>
+                    <h3 className="mb-2 text-sm font-medium text-zinc-700">{k === "__none__" ? t("category.none") : k}</h3>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {groups.get(k)!.map((v) => (
-                        <article key={v.id} className="overflow-hidden rounded-lg border bg-white shadow-sm flex sm:block">
-                <Link href={`/videos/${v.videoId}`}>
-                  {/* use img for remote thumbnail to avoid Next/Image config */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={v.thumbnailUrl || thumbnailUrlFromId(v.videoId)}
-                    alt={v.title}
-                    className="w-40 aspect-video object-cover flex-none sm:w-full"
-                  />
-                </Link>
-                <div className="p-3 min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <Link href={`/videos/${v.videoId}`} className="font-medium hover:underline block truncate" title={v.title}>
-                        {v.title || v.videoId}
-                      </Link>
-                      <div className="flex items-center gap-2 text-xs text-zinc-500">
-                        <span>{formatDuration(v.durationSec)} / {v.provider}</span>
-                        {(v.category || getLocalCategory(v.videoId)) && (
-                          <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-700">
-                            {v.category || getLocalCategory(v.videoId)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {/* 進捗ゲージ（完了/習熟） */}
-                  <CardMetrics videoId={v.videoId} />
-                </div>
-              </article>
+                        <article key={v.id} className="overflow-hidden rounded-lg border bg-white shadow-sm">
+                          {/* Mobile layout: title on top, thumbnail left + gauges right */}
+                          <div className="p-3 sm:hidden">
+                            <Link href={`/videos/${v.videoId}`} className="font-medium hover:underline block truncate" title={v.title}>
+                              {v.title || v.videoId}
+                            </Link>
+                            <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500">
+                              <span>{formatDuration(v.durationSec)} {v.instrument && `/ ${v.instrument}`}</span>
+                            </div>
+                            <div className="mt-2 flex items-stretch gap-2">
+                              <Link href={`/videos/${v.videoId}`} className="flex-none shrink-0">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={v.thumbnailUrl || thumbnailUrlFromId(v.videoId)}
+                                  alt={v.title}
+                                  className="h-24 w-34 rounded object-cover"
+                                />
+                              </Link>
+                              <div className="flex-1 min-w-0 h-24 flex items-center">
+                                <CardMetrics videoId={v.videoId} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Tablet/Desktop layout: original (thumbnail top, content below) */}
+                          <div className="hidden sm:block">
+                            <Link href={`/videos/${v.videoId}`}>
+                              {/* use img for remote thumbnail to avoid Next/Image config */}
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={v.thumbnailUrl || thumbnailUrlFromId(v.videoId)}
+                                alt={v.title}
+                                className="w-full aspect-video object-cover"
+                              />
+                            </Link>
+                            <div className="p-3 min-w-0">
+                              <Link href={`/videos/${v.videoId}`} className="font-medium hover:underline block truncate" title={v.title}>
+                                {v.title || v.videoId}
+                              </Link>
+                              <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500">
+                                <span>{formatDuration(v.durationSec)} {v.instrument && `/ ${v.instrument}`}</span>
+                                {(v.category || getLocalCategory(v.videoId)) && (
+                                  <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-700">
+                                    {v.category || getLocalCategory(v.videoId)}
+                                  </span>
+                                )}
+                              </div>
+                              {/* 進捗ゲージ（完了/習熟） */}
+                              <div className="mt-2">
+                                <CardMetrics videoId={v.videoId} />
+                              </div>
+                            </div>
+                          </div>
+                        </article>
                       ))}
                     </div>
                   </section>
@@ -186,6 +224,7 @@ function AddDialog({
   onClose: () => void;
   onAdded: (v: Video | null) => void;
 }) {
+  const t = useT();
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [autoTitleLoading, setAutoTitleLoading] = useState(false);
@@ -205,7 +244,7 @@ function AddDialog({
       const v = await addVideo({ url, title: title.trim(), instrument: instrument.trim(), category: category.trim() || undefined, durationSec: typeof duration === "number" ? duration : undefined });
       onAdded(v);
     } catch (e: any) {
-      alert(e?.message || "登録に失敗しました");
+      alert(e?.message || t("error.add_failed"));
       onAdded(null);
     } finally {
       setSaving(false);
@@ -215,15 +254,15 @@ function AddDialog({
   return (
     <div className="fixed inset-0 z-50 grid items-start justify-center overflow-y-auto bg-black/40 p-4">
       <div className="mt-16 w-full max-w-md rounded-lg bg-white p-4 shadow-lg">
-        <h3 className="mb-3 text-lg font-medium">動画を追加</h3>
+        <h3 className="mb-3 text-lg font-medium">{t("video.add")}</h3>
         {!authed && (
           <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900 text-sm">
-            ゲストモードで登録しています。ブラウザやタブを閉じるとデータは消えます。最大3件まで登録できます。
+            {t("home.guest_limit")}
             <button
               className="ml-2 inline-flex items-center rounded-md border border-amber-400 bg-white px-2 py-0.5 text-sm hover:bg-amber-100"
               onClick={() => signInWithGoogle()}
             >
-              アカウント登録 / ログイン
+              {t("home.register_login")}
             </button>
           </div>
         )}
@@ -239,10 +278,10 @@ function AddDialog({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm">タイトル（任意）</span>
+            <span className="mb-1 block text-sm">{t("field.title_optional")}</span>
             <input
               className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="例: Sample Guitar Tab"
+              placeholder={t("placeholder.sample_title")}
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
@@ -250,11 +289,11 @@ function AddDialog({
               }}
             />
             {autoTitleLoading && (
-              <span className="mt-1 block text-xs text-zinc-500">タイトルを自動取得中…</span>
+              <span className="mt-1 block text-xs text-zinc-500">{t("auto_title.loading")}</span>
             )}
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm">楽器（任意）</span>
+            <span className="mb-1 block text-sm">{t("field.instrument_optional")}</span>
             <input
               className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Guitar / Bass / Drums"
@@ -263,10 +302,10 @@ function AddDialog({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm">カテゴリー（任意）</span>
+            <span className="mb-1 block text-sm">{t("field.category_optional")}</span>
             <input
               className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="例: 練習中 / 本命 / ジャンル名"
+              placeholder={t("placeholder.category")}
               list="category-suggest"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -278,7 +317,7 @@ function AddDialog({
             </datalist>
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm">動画長（秒・任意）</span>
+            <span className="mb-1 block text-sm">{t("field.duration_optional")}</span>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -299,14 +338,14 @@ function AddDialog({
                     const sec = await getYouTubeDurationSeconds(url);
                     setDuration(sec);
                   } catch (e: any) {
-                    alert(e?.message || "動画長の自動取得に失敗しました");
+                    alert(e?.message || t("error.fetch_duration"));
                   } finally {
                     setGettingDur(false);
                   }
                 }}
                 disabled={!valid || gettingDur}
               >
-                {gettingDur ? "取得中..." : "自動取得"}
+                {gettingDur ? t("button.fetching") : t("button.fetch")}
               </button>
             </div>
           </label>
@@ -320,14 +359,14 @@ function AddDialog({
         }} onLoading={setGettingDur} />
         <div className="mt-4 flex justify-end gap-2">
           <button className="rounded-md px-3 py-1.5 text-zinc-700 hover:bg-zinc-100" onClick={onClose} disabled={saving}>
-            キャンセル
+            {t("common.cancel")}
           </button>
           <button
             className="rounded-md bg-emerald-600 px-4 py-1.5 text-white disabled:opacity-60"
             onClick={submit}
             disabled={!valid || saving}
           >
-            {saving ? "保存中..." : "保存"}
+            {saving ? t("common.saving") : t("common.save")}
           </button>
         </div>
       </div>
@@ -389,6 +428,7 @@ function AutoDurationFetcher({ url, onDuration, onLoading }: { url: string; onDu
 function CardMetrics({ videoId }: { videoId: string }) {
   const [coverageRate, setCoverageRate] = useState<number | null>(null);
   const [proficiencyRate, setProficiencyRate] = useState<number | null>(null);
+  const t = useT();
   useEffect(() => {
     (async () => {
       try {
@@ -413,9 +453,9 @@ function CardMetrics({ videoId }: { videoId: string }) {
   }, [videoId]);
   if (coverageRate === null || proficiencyRate === null) return null;
   return (
-    <div className="mt-2 space-y-1">
-      <Gauge label="完了" percent={coverageRate} color="emerald" />
-      <Gauge label="習熟" percent={proficiencyRate} color="emerald" subtle />
+    <div className="mt-2 w-full space-y-1">
+      <Gauge label={t("video.coverage")} percent={coverageRate} color="emerald" />
+      <Gauge label={t("video.proficiency")} percent={proficiencyRate} color="emerald" subtle />
     </div>
   );
 }
@@ -425,12 +465,25 @@ function Gauge({ label, percent, color = "emerald", subtle = false }: { label: s
   // Tailwind v4 での動的クラス簡易対応: フォールバック色を指定
   const barClass = subtle ? "bg-emerald-200" : "bg-emerald-500";
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-8 shrink-0 text-[11px] text-zinc-600">{label}</span>
-      <div className="relative h-2 w-full rounded bg-zinc-200">
-        <div className={`h-2 rounded ${bar} ${barClass}`} style={{ width: `${clamp}%` }} />
+    <>
+      {/* Mobile: ラベル/数値を上段、ゲージを下段で全幅 */}
+      <div className="grid gap-1 md:hidden">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-zinc-600">{label}</span>
+          <span className="text-[11px] text-zinc-600">{clamp}%</span>
+        </div>
+        <div className="relative h-2 w-full rounded bg-zinc-200">
+          <div className={`h-2 rounded ${bar} ${barClass}`} style={{ width: `${clamp}%` }} />
+        </div>
       </div>
-      <span className="w-8 shrink-0 text-right text-[11px] text-zinc-600">{clamp}%</span>
-    </div>
+      {/* Desktop: 横並び */}
+      <div className="hidden items-center gap-2 md:flex">
+        <span className="w-20 shrink-0 whitespace-nowrap text-[11px] text-zinc-600">{label}</span>
+        <div className="relative h-2 flex-1 min-w-0 rounded bg-zinc-200">
+          <div className={`h-2 rounded ${bar} ${barClass}`} style={{ width: `${clamp}%` }} />
+        </div>
+        <span className="w-10 shrink-0 whitespace-nowrap text-right text-[11px] text-zinc-600">{clamp}%</span>
+      </div>
+    </>
   );
 }
