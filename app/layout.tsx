@@ -38,9 +38,7 @@ export const metadata: Metadata = {
     siteName: "TrackNote",
     title: "TrackNote",
     description: "YouTube のタブ譜動画で練習進捗を記録・管理",
-    images: [
-      { url: "/logo.png", width: 574, height: 574, alt: "TrackNote" },
-    ],
+    images: [{ url: "/opengraph-image" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -48,7 +46,7 @@ export const metadata: Metadata = {
     creator: "@",
     title: "TrackNote",
     description: "YouTube のタブ譜動画で練習進捗を記録・管理",
-    images: ["/logo.png"],
+    images: ["/twitter-image"],
   },
   robots: {
     index: true,
