@@ -3,8 +3,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/app/lib/supabase-client";
+import { useT } from "@/app/components/LocaleProvider";
 
 export default function AuthCallback() {
+  const t = useT();
   const router = useRouter();
   useEffect(() => {
     (async () => {
@@ -21,6 +23,6 @@ export default function AuthCallback() {
     })();
   }, []);
   return (
-    <div className="mx-auto max-w-md p-6 text-center text-sm text-zinc-600">認証処理中…</div>
+    <div className="mx-auto max-w-md p-6 text-center text-sm text-zinc-600">{t("auth.processing")}</div>
   );
 }

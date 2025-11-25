@@ -7,7 +7,13 @@ export async function signInWithGoogle() {
   const redirectTo = `${window.location.origin}/auth/callback`;
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo },
+    options: {
+      redirectTo,
+      queryParams: {
+        // 2回目以降もアカウント選択ダイアログを表示
+        prompt: "select_account",
+      },
+    },
   });
   if (error) throw error;
   return data;

@@ -8,8 +8,10 @@ import { logEvent } from "@/app/lib/analytics";
 import { getCategory, setCategory, getAllCategories as getAllCategoriesLocal } from "@/app/lib/categories";
 import type { Track, Video } from "@/app/lib/types";
 import { thumbnailUrlFromId } from "@/app/lib/youtube";
+import { useT } from "@/app/components/LocaleProvider";
 
 export default function VideoDetailPage() {
+  const t = useT();
   const { videoId } = useParams<{ videoId: string }>();
   const router = useRouter();
   const [video, setVideo] = useState<Video | null>(null);
@@ -170,8 +172,8 @@ export default function VideoDetailPage() {
   if (!video) {
     return (
       <div className="mx-auto max-w-5xl p-6">
-        <Link href="/" className="text-sm text-emerald-600 hover:underline">← 戻る</Link>
-        <div className="mt-6 rounded-md border p-6">動画が見つかりませんでした。</div>
+        <Link href="/" className="text-sm text-emerald-600 hover:underline">{t("common.back")}</Link>
+        <div className="mt-6 rounded-md border p-6">{t("error.video_not_found")}</div>
       </div>
     );
   }
@@ -180,7 +182,7 @@ export default function VideoDetailPage() {
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <header className="mx-auto max-w-5xl px-4 py-4">
         <div className="flex items-center gap-3">
-          <Link href="/" className="text-sm text-emerald-600 hover:underline">← 戻る</Link>
+          <Link href="/" className="text-sm text-emerald-600 hover:underline">{t("common.back")}</Link>
       </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 pb-24">
@@ -201,10 +203,10 @@ export default function VideoDetailPage() {
                 href={video.url}
                 target="_blank"
                 rel="noreferrer"
-                title="動画を開く"
+                title={t("video.open")}
                 className="inline-flex items-center text-emerald-700 hover:text-emerald-800"
               >
-                動画を開く
+                {t("video.open")}
                 {/* external link icon */}
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
                   <path d="M14 3a1 1 0 100 2h3.586l-7.293 7.293a1 1 0 101.414 1.414L19 6.414V10a1 1 0 102 0V4a1 1 0 00-1-1h-6z"/>
@@ -213,40 +215,40 @@ export default function VideoDetailPage() {
               </a>
             </div>
             <div className="mt-3 flex items-center gap-3 text-sm">
-              <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">完了率 {coverageRate}%</span>
-              <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">習熟度 {proficiencyRate}%</span>
-              <button className="rounded-md border px-2 py-1 text-zinc-700 hover:bg-zinc-50" onClick={() => setEditOpen(true)}>編集</button>
+              <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">{t("video.coverage")} {coverageRate}%</span>
+              <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">{t("video.proficiency")} {proficiencyRate}%</span>
+              <button className="rounded-md border px-2 py-1 text-zinc-700 hover:bg-zinc-50" onClick={() => setEditOpen(true)}>{t("common.edit")}</button>
               <button
                 className="rounded-md border px-2 py-1 text-zinc-700 hover:bg-zinc-50"
                 onClick={async () => {
-                  if (!confirm("この動画を削除しますか？")) return;
+                  if (!confirm(t("confirm.delete_video"))) return;
                   try {
                     await removeVideo(video.id, video.videoId);
                     try { logEvent('delete_video', { video_id: video.videoId }); } catch {}
                     router.push("/");
                   } catch (e) {
-                    alert("削除に失敗しました");
+                    alert(t("error.delete_failed"));
                   }
                 }}
               >
-                削除
+                {t("common.delete")}
               </button>
             </div>
           </div>
         </div>
 
         <section className="mt-8">
-          <h2 className="mb-3 text-lg font-medium">練習タイムライン（5秒ブロック）</h2>
+          <h2 className="mb-3 text-lg font-medium">{t("video.timeline_title")}</h2>
           {!track ? (
-            <div className="rounded-md border p-6">トラック情報がありません。</div>
+            <div className="rounded-md border p-6">{t("error.no_track")}</div>
           ) : (
             <div ref={scrollRef} className="overflow-x-auto rounded-md border bg-white p-3 pt-5 shadow-sm">
               <div className="relative inline-flex items-start gap-2 select-none">
                 {/* 縦方向ラベル（上=高, 中=中, 下=低） */}
                 <div className="mr-1 flex flex-col items-center gap-1 text-[10px] text-zinc-500">
-                  <span className="h-6 leading-6">高</span>
-                  <span className="h-6 leading-6">中</span>
-                  <span className="h-6 leading-6">低</span>
+                  <span className="h-6 leading-6">{t("level.high")}</span>
+                  <span className="h-6 leading-6">{t("level.mid")}</span>
+                  <span className="h-6 leading-6">{t("level.low")}</span>
                 </div>
 
                 {/* ブロック本体 */}
@@ -298,7 +300,7 @@ export default function VideoDetailPage() {
                         type="button"
                         className="outline-none"
                         onClick={() => toggleCell(3)}
-                        aria-label="上段トグル"
+                        aria-label={t("aria.toggle_top")}
                       >
                         <Cell filled={topOn} />
                       </button>
@@ -306,7 +308,7 @@ export default function VideoDetailPage() {
                         type="button"
                         className="outline-none"
                         onClick={() => toggleCell(2)}
-                        aria-label="中段トグル"
+                        aria-label={t("aria.toggle_mid")}
                       >
                         <Cell filled={middleOn} />
                       </button>
@@ -314,7 +316,7 @@ export default function VideoDetailPage() {
                         type="button"
                         className="outline-none"
                         onClick={() => toggleCell(1)}
-                        aria-label="下段トグル"
+                        aria-label={t("aria.toggle_bottom")}
                       >
                         <Cell filled={bottomOn} />
                       </button>
@@ -339,7 +341,7 @@ export default function VideoDetailPage() {
               </div>
             </div>
           )}
-          <p className="mt-2 text-xs text-zinc-500">上=高レベル、下=低レベル。各段を個別にタップでON/OFF。上段は下段がONのときのみONにでき、下段をOFFにすると上段もOFFになります。</p>
+          <p className="mt-2 text-xs text-zinc-500">{t("video.legend")}</p>
         </section>
       </main>
       {editOpen && track && (
@@ -398,6 +400,7 @@ function formatDuration(sec?: number) {
 }
 
 function EditDialog({ video, trackBlockSize, onClose, onSaved }: { video: Video; trackBlockSize: number; onClose: () => void; onSaved: (patch: { title?: string; instrument?: string; note?: string; durationSec?: number; blockSizeSec?: number; category?: string }) => void }) {
+  const t = useT();
   const [title, setTitle] = useState(video.title);
   const [instrument, setInstrument] = useState(video.instrument || "");
   const [note, setNote] = useState(video.note || "");
@@ -409,18 +412,18 @@ function EditDialog({ video, trackBlockSize, onClose, onSaved }: { video: Video;
   return (
     <div className="fixed inset-0 z-50 grid items-start justify-center overflow-y-auto bg-black/40 p-4">
       <div className="mt-16 w-full max-w-md rounded-lg bg-white p-4 shadow-lg">
-        <h3 className="mb-3 text-lg font-medium">動画情報を編集</h3>
+        <h3 className="mb-3 text-lg font-medium">{t("video.edit_title")}</h3>
         <div className="space-y-3">
           <label className="block">
-            <span className="mb-1 block text-sm">タイトル</span>
+            <span className="mb-1 block text-sm">{t("field.title")}</span>
             <input className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" value={title} onChange={(e) => setTitle(e.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm">楽器</span>
+            <span className="mb-1 block text-sm">{t("field.instrument")}</span>
             <input className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" value={instrument} onChange={(e) => setInstrument(e.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm">カテゴリー</span>
+            <span className="mb-1 block text-sm">{t("field.category")}</span>
             <input className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" value={category} onChange={(e) => setCategoryInput(e.target.value)} list="edit-category-suggest" />
             <datalist id="edit-category-suggest">
               {categoryOptions.map((c) => (
@@ -429,26 +432,26 @@ function EditDialog({ video, trackBlockSize, onClose, onSaved }: { video: Video;
             </datalist>
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm">メモ</span>
+            <span className="mb-1 block text-sm">{t("field.note")}</span>
             <textarea className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm">動画長（秒）</span>
+            <span className="mb-1 block text-sm">{t("field.duration")}</span>
             <input type="number" min={1} className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" value={duration} onChange={(e) => setDuration(e.target.value === "" ? "" : Number(e.target.value))} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm">ブロック間隔（秒）</span>
+            <span className="mb-1 block text-sm">{t("field.blocksize")}</span>
             <select className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" value={blockSize} onChange={(e) => setBlockSize(Number(e.target.value))}>
               <option value={1}>1</option>
               <option value={2}>2</option>
               <option value={5}>5</option>
               <option value={10}>10</option>
             </select>
-            <span className="mt-1 block text-xs text-zinc-500">変更時は既存の進捗を「最大値」で変換します。</span>
+            <span className="mt-1 block text-xs text-zinc-500">{t("hint.blocksize_change")}</span>
           </label>
         </div>
         <div className="mt-4 flex justify-end gap-2">
-          <button className="rounded-md px-3 py-1.5 text-zinc-700 hover:bg-zinc-100" onClick={onClose} disabled={saving}>キャンセル</button>
+          <button className="rounded-md px-3 py-1.5 text-zinc-700 hover:bg-zinc-100" onClick={onClose} disabled={saving}>{t("common.cancel")}</button>
           <button
             className="rounded-md bg-emerald-600 px-4 py-1.5 text-white disabled:opacity-60"
             onClick={async () => {
@@ -468,7 +471,7 @@ function EditDialog({ video, trackBlockSize, onClose, onSaved }: { video: Video;
             }}
             disabled={saving}
           >
-            保存
+            {t("common.save")}
           </button>
         </div>
       </div>
