@@ -9,6 +9,11 @@
 ・切替: `/locale/set?lang=ja|en` にアクセスでクッキー設定後、直前のページへリダイレクト
 ・実装: `middleware.ts` で `x-locale` ヘッダを付与、`LocaleProvider` でクライアントに配信し文言切替
 
+## OGP / Twitter画像
+- ルートのOGP画像: `app/opengraph-image.tsx`（1200x630, PNG）
+- ルートのTwitter画像: `app/twitter-image.tsx`（1200x630, PNG）
+- `app/layout.tsx` の `metadata.openGraph.images` と `metadata.twitter.images` は上記ルートに向けています。
+
 
 # 画面仕様
 
