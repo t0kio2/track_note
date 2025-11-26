@@ -20,6 +20,7 @@ export default function Home() {
   const [open, setOpen] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [catRev, setCatRev] = useState(0);
+  const [guestBannerLogged, setGuestBannerLogged] = useState(false);
   const categoryOptions = useMemo(() => {
     const fromLocal = getLocalCategories();
     const fromVideos = Array.from(new Set(videos.map((v) => v.category).filter((x): x is string => !!x)));
@@ -51,6 +52,14 @@ export default function Home() {
     return () => window.removeEventListener("tracknote-category-changed", onCat);
   }, []);
 
+  useEffect(() => {
+    const reached = !authed && videos.length >= 3;
+    if (reached && !guestBannerLogged) {
+      try { logEvent('guest_limit_shown'); } catch {}
+      setGuestBannerLogged(true);
+    }
+  }, [authed, videos.length, guestBannerLogged]);
+
   const handleAdded = async (v: Video | null) => {
     setOpen(false);
     if (v) {
@@ -74,7 +83,7 @@ export default function Home() {
           <h2 className="text-lg font-medium">{t("home.list_title")}</h2>
           <button
             className="rounded-md bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700"
-            onClick={() => setOpen(true)}
+            onClick={() => { setOpen(true); try { logEvent('open_add_dialog'); } catch {} }}
             disabled={guestLimitReached}
           >
             {t("common.add")}
@@ -86,7 +95,7 @@ export default function Home() {
             {t("home.guest_limit")}
             <button
               className="ml-3 inline-flex items-center rounded-md border border-amber-400 bg-white px-2 py-1 text-sm hover:bg-amber-100"
-              onClick={() => signInWithGoogle()}
+              onClick={() => { try { logEvent('guest_limit_login_click'); } catch {}; signInWithGoogle(); }}
             >
               {t("home.register_login")}
             </button>
@@ -136,19 +145,19 @@ export default function Home() {
                         <article key={v.id} className="overflow-hidden rounded-lg border bg-white shadow-sm">
                           {/* Mobile layout: title on top, thumbnail left + gauges right */}
                           <div className="p-3 sm:hidden">
-                            <Link href={`/videos/${v.videoId}`} className="font-medium hover:underline block truncate" title={v.title}>
+                            <Link href={`/videos/${v.videoId}`} className="font-medium hover:underline block truncate" title={v.title} onClick={() => { try { logEvent('open_video_detail', { video_id: v.videoId }); } catch {} }}>
                               {v.title || v.videoId}
                             </Link>
                             <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500">
                               <span>{formatDuration(v.durationSec)} {v.instrument && `/ ${v.instrument}`}</span>
                             </div>
                             <div className="mt-2 flex items-stretch gap-2">
-                              <Link href={`/videos/${v.videoId}`} className="flex-none shrink-0">
+                              <Link href={`/videos/${v.videoId}`} className="flex-none shrink-0" onClick={() => { try { logEvent('open_video_detail', { video_id: v.videoId }); } catch {} }}>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={v.thumbnailUrl || thumbnailUrlFromId(v.videoId)}
                                   alt={v.title}
-                                  className="h-24 w-34 rounded object-cover"
+                                  className="h-24 w-36 rounded object-cover"
                                 />
                               </Link>
                               <div className="flex-1 min-w-0 h-24 flex items-center">
@@ -159,7 +168,7 @@ export default function Home() {
 
                           {/* Tablet/Desktop layout: original (thumbnail top, content below) */}
                           <div className="hidden sm:block">
-                            <Link href={`/videos/${v.videoId}`}>
+                            <Link href={`/videos/${v.videoId}`} onClick={() => { try { logEvent('open_video_detail', { video_id: v.videoId }); } catch {} }}>
                               {/* use img for remote thumbnail to avoid Next/Image config */}
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
@@ -169,7 +178,7 @@ export default function Home() {
                               />
                             </Link>
                             <div className="p-3 min-w-0">
-                              <Link href={`/videos/${v.videoId}`} className="font-medium hover:underline block truncate" title={v.title}>
+                              <Link href={`/videos/${v.videoId}`} className="font-medium hover:underline block truncate" title={v.title} onClick={() => { try { logEvent('open_video_detail', { video_id: v.videoId }); } catch {} }}>
                                 {v.title || v.videoId}
                               </Link>
                               <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500">
@@ -225,6 +234,7 @@ function AddDialog({
   onAdded: (v: Video | null) => void;
 }) {
   const t = useT();
+  const openedAt = useMemo(() => Date.now(), []);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [autoTitleLoading, setAutoTitleLoading] = useState(false);
@@ -235,15 +245,20 @@ function AddDialog({
   const [gettingDur, setGettingDur] = useState(false);
   const [userEditedDuration, setUserEditedDuration] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [autoTitleUsed, setAutoTitleUsed] = useState(false);
+  const [autoDurationUsed, setAutoDurationUsed] = useState(false);
+  const [urlEverTyped, setUrlEverTyped] = useState(false);
   const valid = useMemo(() => url.trim().length > 0, [url]);
 
   const submit = async () => {
     if (!valid) return;
     try {
       setSaving(true);
+      try { logEvent('add_dialog_submit_click', { ttc_ms: Date.now() - openedAt, has_url: !!url, has_title: !!title.trim(), has_duration: typeof duration === 'number', auto_title_used: autoTitleUsed, auto_duration_used: autoDurationUsed }); } catch {}
       const v = await addVideo({ url, title: title.trim(), instrument: instrument.trim(), category: category.trim() || undefined, durationSec: typeof duration === "number" ? duration : undefined });
       onAdded(v);
     } catch (e: any) {
+      try { logEvent('add_video_failed', { reason: String(e?.message || 'error').slice(0, 120), has_url: !!url, has_title: !!title.trim(), has_duration: typeof duration === 'number' }); } catch {}
       alert(e?.message || t("error.add_failed"));
       onAdded(null);
     } finally {
@@ -273,7 +288,14 @@ function AddDialog({
               className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="https://www.youtube.com/watch?v=..."
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!urlEverTyped && v.trim().length > 0) {
+                  try { logEvent('add_dialog_input_url_first'); } catch {}
+                  setUrlEverTyped(true);
+                }
+                setUrl(v);
+              }}
               autoFocus
             />
           </label>
@@ -334,9 +356,11 @@ function AddDialog({
                 className="whitespace-nowrap rounded-md border px-2 py-2 text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
                 onClick={async () => {
                   try {
+                    try { logEvent('add_dialog_click_get_duration'); } catch {}
                     setGettingDur(true);
                     const sec = await getYouTubeDurationSeconds(url);
                     setDuration(sec);
+                    try { setAutoDurationUsed(true); logEvent('add_dialog_duration_autofill_success'); } catch {}
                   } catch (e: any) {
                     alert(e?.message || t("error.fetch_duration"));
                   } finally {
@@ -353,12 +377,12 @@ function AddDialog({
         {/* URL 入力時のタイトル自動取得 */}
         <AutoTitleFetcher url={url} onTitle={(t) => {
           if (!userEditedTitle && t) setTitle(t);
-        }} onLoading={setAutoTitleLoading} />
+        }} onLoading={setAutoTitleLoading} onUsed={() => setAutoTitleUsed(true)} />
         <AutoDurationFetcher url={url} onDuration={(sec) => {
           if (!userEditedDuration && typeof sec === "number" && sec > 0) setDuration(sec);
-        }} onLoading={setGettingDur} />
+        }} onLoading={setGettingDur} onUsed={() => setAutoDurationUsed(true)} />
         <div className="mt-4 flex justify-end gap-2">
-          <button className="rounded-md px-3 py-1.5 text-zinc-700 hover:bg-zinc-100" onClick={onClose} disabled={saving}>
+          <button className="rounded-md px-3 py-1.5 text-zinc-700 hover:bg-zinc-100" onClick={() => { try { logEvent('add_dialog_close', { ttc_ms: Date.now() - openedAt, has_url: !!url, has_title: !!title.trim(), has_duration: typeof duration === 'number', auto_title_used: autoTitleUsed, auto_duration_used: autoDurationUsed }); } catch {}; onClose(); }} disabled={saving}>
             {t("common.cancel")}
           </button>
           <button
@@ -374,7 +398,7 @@ function AddDialog({
   );
 }
 
-function AutoTitleFetcher({ url, onTitle, onLoading }: { url: string; onTitle: (t: string) => void; onLoading: (b: boolean) => void }) {
+function AutoTitleFetcher({ url, onTitle, onLoading, onUsed }: { url: string; onTitle: (t: string) => void; onLoading: (b: boolean) => void; onUsed?: () => void }) {
   const [lastUrl, setLastUrl] = useState<string>("");
   useEffect(() => {
     if (!url || url === lastUrl) return;
@@ -382,9 +406,11 @@ function AutoTitleFetcher({ url, onTitle, onLoading }: { url: string; onTitle: (
     const id = setTimeout(async () => {
       try {
         onLoading(true);
+        try { logEvent('add_dialog_title_autofill_start'); } catch {}
         const t = await fetchYouTubeTitle(url, controller.signal);
         onTitle(t);
         setLastUrl(url);
+        try { onUsed && onUsed(); logEvent('add_dialog_title_autofill_success'); } catch {}
       } catch {
         // ignore
       } finally {
@@ -399,7 +425,7 @@ function AutoTitleFetcher({ url, onTitle, onLoading }: { url: string; onTitle: (
   return null;
 }
 
-function AutoDurationFetcher({ url, onDuration, onLoading }: { url: string; onDuration: (sec: number) => void; onLoading: (b: boolean) => void }) {
+function AutoDurationFetcher({ url, onDuration, onLoading, onUsed }: { url: string; onDuration: (sec: number) => void; onLoading: (b: boolean) => void; onUsed?: () => void }) {
   const [lastUrl, setLastUrl] = useState<string>("");
   useEffect(() => {
     if (!url || url === lastUrl) return;
@@ -407,10 +433,12 @@ function AutoDurationFetcher({ url, onDuration, onLoading }: { url: string; onDu
     const id = setTimeout(async () => {
       try {
         onLoading(true);
+        try { logEvent('add_dialog_duration_autofill_start'); } catch {}
         const sec = await getYouTubeDurationSeconds(url);
         if (typeof sec === "number" && sec > 0) {
           onDuration(sec);
           setLastUrl(url);
+          try { onUsed && onUsed(); logEvent('add_dialog_duration_autofill_success'); } catch {}
         }
       } catch {
         // ignore (手動入力/手動取得ボタンを利用可能)

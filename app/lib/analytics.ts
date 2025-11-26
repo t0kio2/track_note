@@ -39,3 +39,16 @@ export function logEvent(eventName: string, params?: Record<string, any>) {
   (window as any).gtag('event', eventName, params || {});
 }
 
+export function setUserId(userId: string | null) {
+  const id = gaId();
+  if (!id || typeof window === "undefined") return;
+  const g = (window as any).gtag;
+  if (!g) return;
+  // GA4 では config で user_id を設定
+  if (userId) {
+    g('config', id, { user_id: userId });
+  } else {
+    // 明示的に user_id を外す（空値を設定）
+    g('config', id, { user_id: undefined });
+  }
+}
