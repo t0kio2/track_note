@@ -56,6 +56,11 @@ export default function VideoDetailPage() {
     setTrackState(next);
     // 楽観的更新（失敗は握りつぶす）
     setTrack(next).catch(() => {});
+    if (!firstInteractSentRef.current) {
+      firstInteractSentRef.current = true;
+      try { logEvent('track_first_interact', { video_id: video?.videoId, tti_ms: Date.now() - visitedAtRef.current }); } catch {}
+    }
+    try { logEvent('track_level_change', { video_id: video?.videoId, index, to_level: level }); } catch {}
   };
 
   const toggle = (index: number) => {
@@ -72,6 +77,8 @@ export default function VideoDetailPage() {
   const [cursorSec, setCursorSec] = useState<number>(0);
   const [dragging, setDragging] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const visitedAtRef = useRef<number>(Date.now());
+  const firstInteractSentRef = useRef<boolean>(false);
 
   // 端でのオートスクロール
   const velRef = useRef(0);
@@ -205,6 +212,7 @@ export default function VideoDetailPage() {
                 rel="noreferrer"
                 title={t("video.open")}
                 className="inline-flex items-center text-emerald-700 hover:text-emerald-800"
+                onClick={() => { try { logEvent('open_source_video', { video_id: video.videoId }); } catch {} }}
               >
                 {t("video.open")}
                 {/* external link icon */}
@@ -217,10 +225,11 @@ export default function VideoDetailPage() {
             <div className="mt-3 flex items-center gap-3 text-sm">
               <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">{t("video.coverage")} {coverageRate}%</span>
               <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">{t("video.proficiency")} {proficiencyRate}%</span>
-              <button className="rounded-md border px-2 py-1 text-zinc-700 hover:bg-zinc-50" onClick={() => setEditOpen(true)}>{t("common.edit")}</button>
+              <button className="rounded-md border px-2 py-1 text-zinc-700 hover:bg-zinc-50" onClick={() => { try { logEvent('video_edit_open', { video_id: video.videoId }); } catch {}; setEditOpen(true); }}>{t("common.edit")}</button>
               <button
                 className="rounded-md border px-2 py-1 text-zinc-700 hover:bg-zinc-50"
                 onClick={async () => {
+                  try { logEvent('delete_video_click', { video_id: video.videoId }); } catch {}
                   if (!confirm(t("confirm.delete_video"))) return;
                   try {
                     await removeVideo(video.id, video.videoId);
@@ -368,6 +377,7 @@ export default function VideoDetailPage() {
               // カテゴリはローカル保存も必要（remote時）
               try { setCategory(video.videoId, patch.category || ""); } catch {}
             })();
+            try { logEvent('video_edit_save', { video_id: video.videoId, has_title: patch.title != null, has_instrument: patch.instrument != null, has_note: patch.note != null, has_duration: patch.durationSec != null, has_blocksize: patch.blockSizeSec != null, has_category: patch.category != null }); } catch {}
             setEditOpen(false);
           }}
         />

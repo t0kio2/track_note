@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { onAuthStateChange, signInWithGoogle, signOut } from "@/app/lib/auth";
 import { clearGuestData, isGuestStarted } from "@/app/lib/storage-local";
 import { showToast } from "@/app/lib/toast";
-import { logEvent } from "@/app/lib/analytics";
+import { logEvent, setUserId } from "@/app/lib/analytics";
 import { useT, useLocale } from "@/app/components/LocaleProvider";
 
 export default function AuthBar() {
@@ -22,6 +22,7 @@ export default function AuthBar() {
     const off = onAuthStateChange((s) => {
       setEmail(s?.user?.email ?? null);
       if (s) {
+        try { setUserId((s as any)?.user?.id || null); } catch {}
         // ログイン後はゲストデータを削除
         try { clearGuestData(); } catch {}
         setGuest(false);
@@ -34,6 +35,9 @@ export default function AuthBar() {
             sessionStorage.removeItem("tracknote.auth.justSignedIn");
           }
         } catch {}
+      }
+      if (!s) {
+        try { setUserId(null); } catch {}
       }
     });
     return () => off();
