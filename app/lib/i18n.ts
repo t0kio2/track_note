@@ -16,7 +16,7 @@ const ja: Dict = {
 
   // Auth
   "auth.processing": "認証処理中…",
-  "auth.login_google": "Google でログイン",
+  "auth.login_google": "Googleでログイン",
   "auth.toast_signed_in": "ログインしました",
   "auth.toast_signed_out": "ログアウトしました",
   "auth.guest": "ゲストモード",
