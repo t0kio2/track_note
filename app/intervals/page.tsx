@@ -170,9 +170,15 @@ export default function PracticePage() {
       case "DynamicWavelet":
         detector = Pitchfinder.DynamicWavelet({ sampleRate: ctx.sampleRate }) as Detector;
         break;
-      case "Macleod":
-        detector = Pitchfinder.Macleod({ sampleRate: ctx.sampleRate }) as Detector;
+      case "Macleod": {
+        const m = Pitchfinder.Macleod({ sampleRate: ctx.sampleRate });
+        detector = (buf: Float32Array) => {
+          const r: any = m(buf);
+          const f = r && typeof r.freq === "number" ? r.freq : null;
+          return f && f > 0 ? f : null;
+        };
         break;
+      }
       case "ACF2PLUS":
       default:
         detector = Pitchfinder.ACF2PLUS({ sampleRate: ctx.sampleRate }) as Detector;
