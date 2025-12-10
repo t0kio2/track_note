@@ -1,0 +1,494 @@
+"use client";
+
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getTrack, getVideoByVideoId, setTrack, updateVideo, updateTrackBlockSize, removeVideo } from "@/app/lib/storage";
+import { logEvent } from "@/app/lib/analytics";
+import { getCategory, setCategory, getAllCategories as getAllCategoriesLocal } from "@/app/lib/categories";
+import type { Track, Video } from "@/app/lib/types";
+import { thumbnailUrlFromId } from "@/app/lib/youtube";
+import { useT } from "@/app/components/LocaleProvider";
+
+export default function VideoDetailPage() {
+  const t = useT();
+  const { videoId } = useParams<{ videoId: string }>();
+  const router = useRouter();
+  const [video, setVideo] = useState<Video | null>(null);
+  const [track, setTrackState] = useState<Track | null>(null);
+  useEffect(() => {
+    if (!videoId) return;
+    (async () => {
+      try {
+        const [v, t] = await Promise.all([
+          getVideoByVideoId(String(videoId)),
+          getTrack(String(videoId)),
+        ]);
+        setVideo(v ?? null);
+        setTrackState(t);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [videoId]);
+
+  const blocks = track?.levels?.length ?? 0;
+  const blockSizeSec = track?.blockSizeSec ?? 5;
+  const totalSeconds = blocks * blockSizeSec;
+  const coverageRate = useMemo(() => {
+    if (!track || blocks === 0) return 0;
+    const covered = track.levels.filter((x) => x > 0).length;
+    return Math.round((covered / blocks) * 100);
+  }, [track, blocks]);
+
+  const proficiencyRate = useMemo(() => {
+    if (!track || blocks === 0) return 0;
+    const sum = track.levels.reduce((a, b) => a + b, 0);
+    return Math.round((sum / (3 * blocks)) * 100);
+  }, [track, blocks]);
+
+  // 推定練習は非表示となったため削除
+
+  const setLevel = (index: number, level: number) => {
+    if (!track) return;
+    const next = { ...track, levels: track.levels.slice() };
+    next.levels[index] = level;
+    setTrackState(next);
+    // 楽観的更新（失敗は握りつぶす）
+    setTrack(next).catch(() => {});
+    if (!firstInteractSentRef.current) {
+      firstInteractSentRef.current = true;
+      try { logEvent('track_first_interact', { video_id: video?.videoId, tti_ms: Date.now() - visitedAtRef.current }); } catch {}
+    }
+    try { logEvent('track_level_change', { video_id: video?.videoId, index, to_level: level }); } catch {}
+  };
+
+  const toggle = (index: number) => {
+    if (!track) return;
+    const current = track.levels[index] ?? 0;
+    const next = (current + 1) % 4; // 0->1->2->3->0
+    setLevel(index, next);
+  };
+
+  // 時間カーソル（縦バー）
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [cursorX, setCursorX] = useState<number>(0);
+  const [cursorSec, setCursorSec] = useState<number>(0);
+  const [dragging, setDragging] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const visitedAtRef = useRef<number>(Date.now());
+  const firstInteractSentRef = useRef<boolean>(false);
+
+  // 端でのオートスクロール
+  const velRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+  const lastClientXRef = useRef<number>(0);
+
+  const stopAutoScroll = () => {
+    velRef.current = 0;
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  };
+
+  const tickAutoScroll = (clientX: number) => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    const rect = sc.getBoundingClientRect();
+    const threshold = 32; // px
+    let v = 0;
+    if (clientX - rect.left < threshold && sc.scrollLeft > 0) {
+      v = -Math.min(12, Math.floor((threshold - (clientX - rect.left)) / 2) + 4);
+    } else if (rect.right - clientX < threshold && sc.scrollLeft < sc.scrollWidth - sc.clientWidth) {
+      v = Math.min(12, Math.floor((threshold - (rect.right - clientX)) / 2) + 4);
+    }
+    velRef.current = v;
+    if (rafRef.current == null && v !== 0) {
+      const loop = () => {
+        const sc2 = scrollRef.current;
+        if (!sc2) return;
+        if (velRef.current !== 0) {
+          sc2.scrollLeft += velRef.current;
+          // スクロールに合わせてカーソルの時刻を更新
+          updateCursor(lastClientXRef.current);
+          rafRef.current = requestAnimationFrame(loop);
+        } else {
+          rafRef.current = null;
+        }
+      };
+      rafRef.current = requestAnimationFrame(loop);
+    }
+  };
+
+  const updateCursor = (clientX: number) => {
+    const el = contentRef.current;
+    if (!el || totalSeconds <= 0) return;
+    const rect = el.getBoundingClientRect();
+    let x = clientX - rect.left;
+    x = Math.max(0, Math.min(rect.width, x));
+
+    // デフォルト: 全体比から推定
+    const ratio = rect.width > 0 ? x / rect.width : 0;
+    let sec = Math.round(ratio * totalSeconds);
+
+    // 改良: 実際に重なっているブロックから厳密に算出
+    const cols = Array.from(el.querySelectorAll<HTMLDivElement>("[data-col]"));
+    for (const col of cols) {
+      const cr = col.getBoundingClientRect();
+      if (clientX >= cr.left && clientX <= cr.right) {
+        const idx = Number(col.dataset.col || 0) || 0;
+        const within = cr.width > 0 ? (clientX - cr.left) / cr.width : 0;
+        const local = Math.round(within * blockSizeSec);
+        sec = Math.min(totalSeconds, idx * blockSizeSec + local);
+        break;
+      }
+    }
+
+    setCursorX(x);
+    setCursorSec(sec);
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    // マウスはホバーで十分。タッチ時のみドラッグ状態にする。
+    if (e.pointerType === "touch") setDragging(true);
+    lastClientXRef.current = e.clientX;
+    updateCursor(e.clientX);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    lastClientXRef.current = e.clientX;
+    if (!dragging) {
+      // ホバーでも追従
+      updateCursor(e.clientX);
+      tickAutoScroll(e.clientX);
+      return;
+    }
+    updateCursor(e.clientX);
+    tickAutoScroll(e.clientX);
+  };
+  const onPointerUp = () => {
+    setDragging(false);
+    stopAutoScroll();
+  };
+  const onPointerLeave = () => {
+    // バーは常に表示したいので座標は保持したままにする
+    stopAutoScroll();
+  };
+
+  if (!video) {
+    return (
+      <div className="mx-auto max-w-5xl p-6">
+        <Link href="/progress" className="text-sm text-emerald-600 hover:underline">{t("common.back")}</Link>
+        <div className="mt-6 rounded-md border p-6">{t("error.video_not_found")}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-zinc-50 text-zinc-900">
+      <header className="mx-auto max-w-5xl px-4 py-4">
+        <nav className="text-sm text-zinc-600">
+          <Link href="/" className="hover:underline">{t("nav.home")}</Link>
+          <span className="mx-1">/</span>
+          <Link href="/progress" className="hover:underline">{t("nav.progress")}</Link>
+          <span className="mx-1">/</span>
+          <span className="text-zinc-800" title={video?.title || String(videoId)}>{video?.title || videoId}</span>
+        </nav>
+      </header>
+      <main className="mx-auto max-w-5xl px-4 pb-24">
+        <div className="flex flex-col gap-4 md:flex-row">
+          <div className="w-full md:w-1/3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={video.thumbnailUrl || thumbnailUrlFromId(video.videoId)}
+              alt={video.title}
+              className="aspect-video w-full rounded-md border object-cover"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="truncate text-xl font-semibold" title={video.title}>{video.title}</h1>
+            <div className="mt-1 flex items-center gap-2 text-sm text-zinc-600">
+              <span>{formatDuration(video.durationSec)} ・ {video.instrument || "Instrument"}</span>
+              <a
+                href={video.url}
+                target="_blank"
+                rel="noreferrer"
+                title={t("video.open")}
+                className="inline-flex items-center text-emerald-700 hover:text-emerald-800"
+                onClick={() => { try { logEvent('open_source_video', { video_id: video.videoId }); } catch {} }}
+              >
+                {t("video.open")}
+                {/* external link icon */}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                  <path d="M14 3a1 1 0 100 2h3.586l-7.293 7.293a1 1 0 101.414 1.414L19 6.414V10a1 1 0 102 0V4a1 1 0 00-1-1h-6z"/>
+                  <path d="M5 5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4a1 1 0 10-2 0v4H5V7h4a1 1 0 100-2H5z"/>
+                </svg>
+              </a>
+            </div>
+            <div className="mt-3 flex items-center gap-3 text-sm">
+              <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">{t("video.coverage")} {coverageRate}%</span>
+              <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">{t("video.proficiency")} {proficiencyRate}%</span>
+              <button className="rounded-md border px-2 py-1 text-zinc-700 hover:bg-zinc-50" onClick={() => { try { logEvent('video_edit_open', { video_id: video.videoId }); } catch {}; setEditOpen(true); }}>{t("common.edit")}</button>
+              <button
+                className="rounded-md border px-2 py-1 text-zinc-700 hover:bg-zinc-50"
+                onClick={async () => {
+                  try { logEvent('delete_video_click', { video_id: video.videoId }); } catch {}
+                  if (!confirm(t("confirm.delete_video"))) return;
+                  try {
+                    await removeVideo(video.id, video.videoId);
+                    try { logEvent('delete_video', { video_id: video.videoId }); } catch {}
+                    router.push("/progress");
+                  } catch (e) {
+                    alert(t("error.delete_failed"));
+                  }
+                }}
+              >
+                {t("common.delete")}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <section className="mt-8">
+          <h2 className="mb-3 text-lg font-medium">{t("video.timeline_title")}</h2>
+          {!track ? (
+            <div className="rounded-md border p-6">{t("error.no_track")}</div>
+          ) : (
+            <div ref={scrollRef} className="overflow-x-auto rounded-md border bg-white p-3 pt-5 shadow-sm">
+              <div className="relative inline-flex items-start gap-2 select-none">
+                {/* 縦方向ラベル（上=高, 中=中, 下=低） */}
+                <div className="mr-1 flex flex-col items-center gap-1 text-[10px] text-zinc-500">
+                  <span className="h-6 leading-6">{t("level.high")}</span>
+                  <span className="h-6 leading-6">{t("level.mid")}</span>
+                  <span className="h-6 leading-6">{t("level.low")}</span>
+                </div>
+
+                {/* ブロック本体 */}
+                <div
+                  ref={contentRef}
+                  className="relative inline-flex items-start gap-1 pb-8"
+                  onPointerDown={onPointerDown}
+                  onPointerMove={onPointerMove}
+                  onPointerUp={onPointerUp}
+                  onPointerLeave={onPointerLeave}
+                >
+                {track.levels.map((level, idx) => {
+                  const lv = level || 0;
+                  const bottomOn = lv >= 1;
+                  const middleOn = lv >= 2;
+                  const topOn = lv >= 3;
+                  const toggleCell = (tier: 1 | 2 | 3) => {
+                    if (!track) return;
+                    const current = track.levels[idx] ?? 0;
+                    // ルール:
+                    // - 上段は下段がONでないと操作不可
+                    // - OFFにする時は上段も連動でOFF
+                    if (tier === 1) {
+                      const next = current >= 1 ? 0 : 1;
+                      setLevel(idx, next);
+                      return;
+                    }
+                    if (tier === 2) {
+                      if (current < 1) return; // 下段がOFFなら無効
+                      const next = current >= 2 ? 1 : 2;
+                      setLevel(idx, next);
+                      return;
+                    }
+                    if (tier === 3) {
+                      if (current < 2) return; // 中段がOFFなら無効
+                      const next = current >= 3 ? 2 : 3;
+                      setLevel(idx, next);
+                      return;
+                    }
+                  };
+                  return (
+                    <div
+                      key={idx}
+                      data-col={idx}
+                      className="flex flex-col items-stretch gap-1"
+                    >
+                      {/* 上=3, 中=2, 下=1 の順に表示（各段を個別タップでON/OFF） */}
+                      <button
+                        type="button"
+                        className="outline-none"
+                        onClick={() => toggleCell(3)}
+                        aria-label={t("aria.toggle_top")}
+                      >
+                        <Cell filled={topOn} />
+                      </button>
+                      <button
+                        type="button"
+                        className="outline-none"
+                        onClick={() => toggleCell(2)}
+                        aria-label={t("aria.toggle_mid")}
+                      >
+                        <Cell filled={middleOn} />
+                      </button>
+                      <button
+                        type="button"
+                        className="outline-none"
+                        onClick={() => toggleCell(1)}
+                        aria-label={t("aria.toggle_bottom")}
+                      >
+                        <Cell filled={bottomOn} />
+                      </button>
+                      <div className="text-center text-[10px] text-zinc-500">{formatDuration(idx * blockSizeSec)}</div>
+                    </div>
+                  );
+                })}
+
+                  <>
+                    <div
+                      className="pointer-events-none absolute top-0 bottom-0 w-px bg-emerald-600"
+                      style={{ left: `${cursorX}px` }}
+                    />
+                    <div
+                      className="pointer-events-none absolute -top-5 -translate-x-1/2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white"
+                      style={{ left: `${cursorX}px` }}
+                    >
+                      {formatDuration(cursorSec)}
+                    </div>
+                  </>
+                </div>
+              </div>
+            </div>
+          )}
+          <p className="mt-2 text-xs text-zinc-500">{t("video.legend")}</p>
+        </section>
+      </main>
+      {editOpen && track && (
+        <EditDialog
+          video={video}
+          trackBlockSize={track.blockSizeSec}
+          onClose={() => setEditOpen(false)}
+          onSaved={(patch) => {
+            (async () => {
+              if (typeof patch.durationSec === "number") {
+                await updateVideo(video.id, { durationSec: patch.durationSec, title: patch.title, instrument: patch.instrument, note: patch.note, category: patch.category });
+              } else {
+                await updateVideo(video.id, { title: patch.title, instrument: patch.instrument, note: patch.note, category: patch.category });
+              }
+              if (typeof patch.blockSizeSec === "number") {
+                await updateTrackBlockSize(video.videoId, patch.blockSizeSec);
+              }
+              const [nv, nt] = await Promise.all([
+                getVideoByVideoId(video.videoId),
+                getTrack(video.videoId),
+              ]);
+              if (nv) setVideo(nv);
+              if (nt) setTrackState(nt);
+              // カテゴリはローカル保存も必要（remote時）
+              try { setCategory(video.videoId, patch.category || ""); } catch {}
+            })();
+            try { logEvent('video_edit_save', { video_id: video.videoId, has_title: patch.title != null, has_instrument: patch.instrument != null, has_note: patch.note != null, has_duration: patch.durationSec != null, has_blocksize: patch.blockSizeSec != null, has_category: patch.category != null }); } catch {}
+            setEditOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function Cell({ filled, label }: { filled: boolean; label?: string }) {
+  return (
+    <div
+      title={label}
+      className={
+        "h-6 w-6 rounded-sm border " +
+        (filled ? "bg-emerald-500 border-emerald-600" : "bg-white border-zinc-300")
+      }
+    />
+  );
+}
+
+function formatDuration(sec?: number) {
+  if (!sec || sec < 0) return "--:--";
+  const m = Math.floor(sec / 60)
+    .toString()
+    .padStart(1, "0");
+  const s = Math.floor(sec % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function EditDialog({ video, trackBlockSize, onClose, onSaved }: { video: Video; trackBlockSize: number; onClose: () => void; onSaved: (patch: { title?: string; instrument?: string; note?: string; durationSec?: number; blockSizeSec?: number; category?: string }) => void }) {
+  const t = useT();
+  const [title, setTitle] = useState(video.title);
+  const [instrument, setInstrument] = useState(video.instrument || "");
+  const [note, setNote] = useState(video.note || "");
+  const [duration, setDuration] = useState<number | "">(video.durationSec ?? "");
+  const [blockSize, setBlockSize] = useState<number>(trackBlockSize || 5);
+  const [category, setCategoryInput] = useState<string>(video.category || getCategory(video.videoId) || "");
+  const [saving, setSaving] = useState(false);
+  const categoryOptions = getAllCategoriesLocal();
+  return (
+    <div className="fixed inset-0 z-50 grid items-start justify-center overflow-y-auto bg-black/40 p-4">
+      <div className="mt-16 w-full max-w-md rounded-lg bg-white p-4 shadow-lg">
+        <h3 className="mb-3 text-lg font-medium">{t("video.edit_title")}</h3>
+        <div className="space-y-3">
+          <label className="block">
+            <span className="mb-1 block text-sm">{t("field.title")}</span>
+            <input className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm">{t("field.instrument")}</span>
+            <input className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" value={instrument} onChange={(e) => setInstrument(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm">{t("field.category")}</span>
+            <input className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" value={category} onChange={(e) => setCategoryInput(e.target.value)} list="edit-category-suggest" />
+            <datalist id="edit-category-suggest">
+              {categoryOptions.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm">{t("field.note")}</span>
+            <textarea className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm">{t("field.duration")}</span>
+            <input type="number" min={1} className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" value={duration} onChange={(e) => setDuration(e.target.value === "" ? "" : Number(e.target.value))} />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm">{t("field.blocksize")}</span>
+            <select className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" value={blockSize} onChange={(e) => setBlockSize(Number(e.target.value))}>
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+            </select>
+            <span className="mt-1 block text-xs text-zinc-500">{t("hint.blocksize_change")}</span>
+          </label>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button className="rounded-md px-3 py-1.5 text-zinc-700 hover:bg-zinc-100" onClick={onClose} disabled={saving}>{t("common.cancel")}</button>
+          <button
+            className="rounded-md bg-emerald-600 px-4 py-1.5 text-white disabled:opacity-60 hover:bg-emerald-700"
+            onClick={async () => {
+              try {
+                setSaving(true);
+                onSaved({
+                  title: title.trim() || undefined,
+                  instrument: instrument.trim() || undefined,
+                  note: note.trim() || undefined,
+                  durationSec: typeof duration === "number" ? Math.max(1, Math.floor(duration)) : undefined,
+                  blockSizeSec: blockSize,
+                  category: category.trim() || "",
+                });
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+          >
+            {t("common.save")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

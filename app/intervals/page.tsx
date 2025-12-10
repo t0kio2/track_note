@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useT } from "@/app/components/LocaleProvider";
 import * as Pitchfinder from "pitchfinder";
 import Fretboard from "@/app/components/Fretboard";
 
@@ -57,13 +58,14 @@ const DEGREE_MAP: Record<number, string> = {
 };
 
 export default function PracticePage() {
+  const t = useT();
   const [running, setRunning] = useState(false);
   const [rootMidi, setRootMidi] = useState<number | null>(null);
   const [rootFreq, setRootFreq] = useState<number | null>(null);
   const [curFreq, setCurFreq] = useState<number | null>(null);
   const [curMidi, setCurMidi] = useState<number | null>(null);
   const [degree, setDegree] = useState<string>("-");
-  const [status, setStatus] = useState<string>("待機中");
+  const [status, setStatus] = useState<string>(t("intervals.status.idle"));
   const [algo, setAlgo] = useState<"ACF2PLUS" | "YIN" | "DynamicWavelet" | "Macleod">("ACF2PLUS");
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [deviceId, setDeviceId] = useState<string | undefined>(undefined);
@@ -202,7 +204,7 @@ export default function PracticePage() {
       for (let i = 0; i < data.length; i++) rms += data[i] * data[i];
       rms = Math.sqrt(rms / data.length);
       if (rms < 0.002) {
-        setStatus("検出中...");
+        setStatus(t("intervals.status.detecting"));
         return;
       }
 
@@ -215,13 +217,13 @@ export default function PracticePage() {
 
       const freq = detector(windowed) || null;
       if (!freq || !isFinite(freq) || freq < 30 || freq > 1000) {
-        setStatus("検出中...");
+        setStatus(t("intervals.status.detecting"));
         return;
       }
       const midi = freqToMidi(freq);
       setCurFreq(freq);
       setCurMidi(midi);
-      setStatus(modeRef.current === "low" ? "検出中（低遅延）" : "検出中（安定）");
+      setStatus(modeRef.current === "low" ? t("intervals.status.detecting_low") : t("intervals.status.detecting_stable"));
 
       // ルート未確定: 最初の安定した音を採用し、低遅延に切替
       if (rootMidiRef.current == null) {
@@ -263,13 +265,13 @@ export default function PracticePage() {
     procRef.current = proc;
 
     if (!initial) {
-      setStatus(mode === "low" ? "稼働中（低遅延）" : "稼働中（安定）");
+      setStatus(mode === "low" ? t("intervals.status.running_low") : t("intervals.status.running_stable"));
     }
   };
 
   const start = async () => {
     if (running) return;
-    setStatus("マイクにアクセス中...");
+    setStatus(t("intervals.status.mic_access"));
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -292,10 +294,10 @@ export default function PracticePage() {
       runningRef.current = true;
       // 初期は安定モードで開始（ルート確定を優先）
       setupProcessor(ctx, source, gain, true);
-      setStatus("稼働中（安定）");
+      setStatus(t("intervals.status.running_stable"));
     } catch (err) {
       console.error(err);
-      setStatus("マイクの使用が拒否されました");
+      setStatus(t("intervals.status.mic_denied"));
     }
   };
 
@@ -303,7 +305,7 @@ export default function PracticePage() {
     await stopAudio();
     setRunning(false);
     runningRef.current = false;
-    setStatus("停止中");
+    setStatus(t("intervals.status.stopped"));
   };
 
   const resetRoot = () => {
@@ -320,7 +322,7 @@ export default function PracticePage() {
       rootMidiRef.current = null;
       rootFreqRef.current = null;
       setupProcessor(audioRef.current, sourceRef.current, gainRef.current);
-      setStatus("稼働中（安定）");
+      setStatus(t("intervals.status.running_stable"));
     }
   };
 
@@ -330,77 +332,81 @@ export default function PracticePage() {
   const rootCents = useMemo(() => (rootFreq && rootMidi ? centsOff(rootFreq, Math.round(rootMidi)) : 0), [rootFreq, rootMidi]);
 
   return (
-    <div className="mx-auto max-w-3xl px-3 py-4">
-      <h1 className="text-xl font-semibold sm:text-2xl">ベース音程マスター</h1>
-      <p className="mt-1 text-sm text-zinc-600">最初に弾いた音をルートとして固定し、次に弾いた音の音程をリアルタイム表示します。</p>
+    <div className="min-h-screen bg-zinc-50 text-zinc-900">
+      <div className="mx-auto max-w-3xl px-3 py-4">
+      <h1 className="text-xl font-semibold sm:text-2xl">{t("intervals.title")}</h1>
+      <p className="mt-1 text-sm text-zinc-600">{t("intervals.subtitle")}</p>
 
       <div className="mt-3 flex items-center gap-2">
         {!running ? (
-          <button onClick={start} className="rounded bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800">開始</button>
+          <button onClick={start} className="rounded-full bg-emerald-600 px-4 py-2 text-sm text-white shadow-sm hover:bg-emerald-700">{t("intervals.start")}</button>
         ) : (
-          <button onClick={stop} className="rounded bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800">停止</button>
+          <button onClick={stop} className="rounded-full bg-emerald-600 px-4 py-2 text-sm text-white shadow-sm hover:bg-emerald-700">{t("intervals.stop")}</button>
         )}
-        <button onClick={resetRoot} className="rounded border px-3 py-1.5 text-sm hover:bg-zinc-50">ルートをリセット</button>
-        <span className="text-xs text-zinc-500 sm:text-sm">{status}</span>
+        <button onClick={resetRoot} className="rounded-full border border-emerald-300 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50">{t("intervals.reset_root")}</button>
+        <span className="inline-flex items-center gap-1 text-xs text-zinc-500 sm:text-sm">
+          <span className={`inline-block h-2 w-2 rounded-full ${running ? "bg-emerald-500" : "bg-zinc-300"}`} aria-hidden />
+          {status}
+        </span>
       </div>
 
       {/* 詳細設定（モバイルは折りたたみ、sm以上は常時表示） */}
       <div className="mt-2 hidden flex-wrap items-center gap-3 text-sm sm:flex">
         <label className="flex items-center gap-2">
-          <span className="text-zinc-600">検出器</span>
+          <span className="text-zinc-600">{t("intervals.settings.detector")}</span>
           <select
-            className="rounded border bg-white px-2 py-1 text-zinc-900"
+            className="rounded-md border bg-white px-2 py-1 text-zinc-900"
             value={algo}
             onChange={(e) => setAlgo(e.target.value as any)}
             disabled={running}
           >
-            <option value="ACF2PLUS">ACF2PLUS（低音に強い）</option>
+            <option value="ACF2PLUS">{t("intervals.detector.acf2plus")}</option>
             <option value="YIN">YIN</option>
             <option value="DynamicWavelet">DynamicWavelet</option>
             <option value="Macleod">Macleod</option>
           </select>
         </label>
         <label className="flex items-center gap-2">
-          <span className="text-zinc-600">入力</span>
+          <span className="text-zinc-600">{t("intervals.settings.input")}</span>
           <select
-            className="min-w-56 rounded border bg-white px-2 py-1 text-zinc-900"
+            className="min-w-56 rounded-md border bg-white px-2 py-1 text-zinc-900"
             value={deviceId}
             onChange={(e) => setDeviceId(e.target.value)}
             disabled={running}
           >
             {devices.map((d) => (
-              <option key={d.deviceId} value={d.deviceId}>{d.label || `デバイス (${d.deviceId.slice(0,6)})`}</option>
+              <option key={d.deviceId} value={d.deviceId}>{d.label || `${t("intervals.device")} (${d.deviceId.slice(0,6)})`}</option>
             ))}
           </select>
         </label>
       </div>
       <details className="mt-2 sm:hidden">
-        <summary className="cursor-pointer select-none text-sm text-zinc-600">詳細設定</summary>
+        <summary className="cursor-pointer select-none text-sm text-zinc-600">{t("intervals.settings.advanced")}</summary>
         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
           <label className="flex items-center gap-2">
-            <span className="text-zinc-600">検出器</span>
+            <span className="text-zinc-600">{t("intervals.settings.detector")}</span>
             <select
-              className="rounded border bg-white px-2 py-1 text-zinc-900"
+              className="rounded-md border bg-white px-2 py-1 text-zinc-900"
               value={algo}
               onChange={(e) => setAlgo(e.target.value as any)}
               disabled={running}
             >
-              <option value="ACF2PLUS">ACF2PLUS（低音に強い）</option>
+              <option value="ACF2PLUS">{t("intervals.detector.acf2plus")}</option>
               <option value="YIN">YIN</option>
               <option value="DynamicWavelet">DynamicWavelet</option>
               <option value="Macleod">Macleod</option>
             </select>
           </label>
           <label className="flex items-center gap-2">
-            <span className="text-zinc-600">入力</span>
+            <span className="text-zinc-600">{t("intervals.settings.input")}</span>
             <select
-              className="min-w-56 rounded border bg-white px-2 py-1 text-zinc-900"
+              className="min-w-56 rounded-md border bg-white px-2 py-1 text-zinc-900"
               value={deviceId}
               onChange={(e) => setDeviceId(e.target.value)}
               disabled={running}
             >
               {devices.map((d) => (
-                <option key={d.deviceId} value={d.deviceId}>{d.label || `デバイス (${d.deviceId.slice(0,6)})`}</option>
+                <option key={d.deviceId} value={d.deviceId}>{d.label || `${t("intervals.device")} (${d.deviceId.slice(0,6)})`}</option>
               ))}
             </select>
           </label>
@@ -409,37 +415,37 @@ export default function PracticePage() {
 
       {/* モバイル: ルート/現在/度数を横並び */}
       <div className="mt-3 grid grid-cols-3 gap-2 sm:hidden">
-        <div className="rounded-lg border bg-white p-2 text-center shadow-sm">
-          <div className="text-[10px] text-zinc-500">ルート</div>
+        <div className="rounded-xl bg-white p-2 text-center shadow-sm">
+          <div className="text-[10px] text-zinc-500">{t("intervals.root")}</div>
           <div className="mt-0.5 text-lg font-bold text-zinc-900">{rootName}</div>
         </div>
-        <div className="rounded-lg border bg-white p-2 text-center shadow-sm">
-          <div className="text-[10px] text-zinc-500">現在</div>
+        <div className="rounded-xl bg-white p-2 text-center shadow-sm">
+          <div className="text-[10px] text-zinc-500">{t("intervals.current")}</div>
           <div className="mt-0.5 text-lg font-bold text-zinc-900">{curName}</div>
         </div>
-        <div className="rounded-lg border bg-white p-2 text-center shadow-sm">
-          <div className="text-[10px] text-zinc-500">度数</div>
+        <div className="rounded-xl bg-white p-2 text-center shadow-sm">
+          <div className="text-[10px] text-zinc-500">{t("intervals.degree")}</div>
           <div className="mt-0.5 text-xl font-extrabold tracking-wide text-zinc-900">{degree}</div>
         </div>
       </div>
 
       {/* タブレット以上: ルート/現在/度数を横一列（3カラム） */}
       <div className="mt-4 hidden grid-cols-1 gap-3 sm:grid sm:grid-cols-3">
-        <div className="rounded-lg border bg-white p-3 text-center shadow-sm sm:p-4">
-          <div className="text-xs text-zinc-500">ルート（R）</div>
+        <div className="rounded-xl bg-white p-3 text-center shadow-sm sm:p-4">
+          <div className="text-xs text-zinc-500">{t("intervals.root")} (R)</div>
           <div className="mt-1 text-2xl font-bold text-zinc-900 sm:text-3xl">{rootName}</div>
           <div className="mt-1 text-xs text-zinc-800 sm:text-sm">{rootFreq ? `${rootFreq.toFixed(1)} Hz` : "-"} {rootFreq ? `(${rootCents >= 0 ? "+" : ""}${rootCents} cents)` : ""}</div>
-          <p className="mt-2 text-xs text-zinc-500">最初に検出された安定した音を自動でルートに設定します。</p>
+          <p className="mt-2 text-xs text-zinc-500">{t("intervals.tip.root_auto")}</p>
         </div>
-        <div className="rounded-lg border bg-white p-3 text-center shadow-sm sm:p-4">
-          <div className="text-xs text-zinc-500">現在の音</div>
+        <div className="rounded-xl bg-white p-3 text-center shadow-sm sm:p-4">
+          <div className="text-xs text-zinc-500">{t("intervals.current_note")}</div>
           <div className="mt-1 text-2xl font-bold text-zinc-900 sm:text-3xl">{curName}</div>
           <div className="mt-1 text-xs text-zinc-800 sm:text-sm">{curFreq ? `${curFreq.toFixed(1)} Hz` : "-"} {curFreq ? `(${curCents >= 0 ? "+" : ""}${curCents} cents)` : ""}</div>
         </div>
-        <div className="rounded-lg border bg-white p-3 text-center shadow-sm sm:p-4">
-          <div className="text-xs text-zinc-500">度数</div>
+        <div className="rounded-xl bg-white p-3 text-center shadow-sm sm:p-4">
+          <div className="text-xs text-zinc-500">{t("intervals.degree")}</div>
           <div className="mt-1 text-3xl font-extrabold tracking-wide text-zinc-900 sm:text-4xl">{degree}</div>
-          <p className="mt-2 text-xs text-zinc-500 sm:mt-3">例: b3, 3, 4, b7, 5 など</p>
+          <p className="mt-2 text-xs text-zinc-500 sm:mt-3">{t("intervals.example.degrees")}</p>
         </div>
       </div>
 
@@ -450,14 +456,15 @@ export default function PracticePage() {
       </div>
 
       <div className="mt-8 text-sm text-zinc-600">
-        <p className="font-medium">使い方</p>
+        <p className="font-medium">{t("intervals.howto.title")}</p>
         <ul className="mt-1 list-disc pl-5 space-y-1">
-          <li>「開始」を押してマイクアクセスを許可してください。</li>
-          <li>最初に鳴らした音がルート(R)になります。以降、弾いた音との度数を表示します。</li>
-          <li>誤検出やルートを変えたい場合は「ルートをリセット」を押してください。</li>
-          <li>雑音が多い環境では検出が不安定になる場合があります。</li>
-          <li>指板では、赤=ルート音、青=現在音の「同じピッチ」の位置を全弦で表示します（重なると紫）。</li>
+          <li>{t("intervals.howto.1")}</li>
+          <li>{t("intervals.howto.2")}</li>
+          <li>{t("intervals.howto.3")}</li>
+          <li>{t("intervals.howto.4")}</li>
+          <li>{t("intervals.howto.5")}</li>
         </ul>
+      </div>
       </div>
     </div>
   );

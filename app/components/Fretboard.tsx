@@ -8,6 +8,8 @@ type Props = {
   frets?: number; // 表示フレット数（0含む）
   tuning?: number[]; // 各弦の開放音のMIDI（低→高）
   mode?: "root-only" | "current-only" | "both"; // 表示モード
+  markByPcRoot?: boolean; // ルートをピッチクラス一致で表示
+  markByPcCurrent?: boolean; // 現在音をピッチクラス一致で表示
 };
 
 const defaultTuning = [28, 33, 38, 43]; // E1 A1 D2 G2（低→高）
@@ -22,7 +24,7 @@ function pc(m: number) {
   return ((Math.round(m) % 12) + 12) % 12;
 }
 
-export default function Fretboard({ rootMidi = null, currentMidi = null, frets = 12, tuning = defaultTuning, mode = "both" }: Props) {
+export default function Fretboard({ rootMidi = null, currentMidi = null, frets = 12, tuning = defaultTuning, mode = "both", markByPcRoot = false, markByPcCurrent = false }: Props) {
   const rootRounded = rootMidi == null ? null : Math.round(rootMidi);
   const curRounded = currentMidi == null ? null : Math.round(currentMidi);
 
@@ -30,14 +32,14 @@ export default function Fretboard({ rootMidi = null, currentMidi = null, frets =
   const ordered = [...tuning].reverse(); // 高→低
 
   return (
-    <div className="rounded-lg border bg-white p-4 shadow-sm">
+    <div className="rounded-xl bg-white px-2 py-4 shadow-sm">
       <div className="mb-3 flex items-center gap-3 text-xs text-zinc-600">
         <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-red-500" /> ルート音の位置</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-blue-500" /> 現在音の位置</span>
       </div>
       {/* 横スクロールなしで全表示（コンテナ幅にフィット） */}
-      {/* ナット行（フレット0） + frets 列 */}
-      <div className="grid" style={{ gridTemplateColumns: `42px repeat(${frets + 1}, 1fr)` }}>
+      {/* ラベル列をさらに狭めてフレット幅を最大化（左余白を極小化） */}
+      <div className="grid" style={{ gridTemplateColumns: `20px repeat(${frets + 1}, minmax(0, 1fr))` }}>
         {/* ヘッダ（空白 + フレット番号） */}
         <div />
         {Array.from({ length: frets + 1 }).map((_, i) => (
@@ -46,13 +48,15 @@ export default function Fretboard({ rootMidi = null, currentMidi = null, frets =
 
         {ordered.map((open, sIdx) => (
           <React.Fragment key={sIdx}>
-            {/* 弦ラベル（1弦=最上段、開放音コードを併記） */}
-            <div className="flex items-center justify-end pr-1 text-[11px] text-zinc-600">{`${sIdx + 1}弦 (${noteNamePc(open)})`}</div>
+            {/* 弦ラベル：弦番号を除き、開放音のコード名のみ表示（左余白を最小化） */}
+            <div className="flex items-center justify-end pr-0 text-[10px] text-zinc-600">{noteNamePc(open)}</div>
             {/* フレットマス */}
             {Array.from({ length: frets + 1 }).map((_, fIdx) => {
               const m = open + fIdx; // そのマスの正確なMIDIノート
-              const rootHit = rootRounded != null && m === rootRounded;
-              const curHit = curRounded != null && m === curRounded;
+              const rootHit =
+                rootRounded != null && (markByPcRoot ? pc(m) === pc(rootRounded) : m === rootRounded);
+              const curHit =
+                curRounded != null && (markByPcCurrent ? pc(m) === pc(curRounded) : m === curRounded);
               const isRoot = mode !== "current-only" && rootHit;
               const isCur = mode !== "root-only" && curHit;
               const showDot = isRoot || isCur;

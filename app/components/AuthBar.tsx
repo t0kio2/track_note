@@ -133,9 +133,10 @@ export default function AuthBar() {
             <a className="rounded-md border px-2 py-1 hover:bg-zinc-600" href={`/locale/set?lang=${locale === "ja" ? "en" : "ja"}`}>
               {locale === "ja" ? "English" : "日本語"}
             </a>
-            <button className="rounded-md border px-2 py-1 hover:bg-zinc-600" onClick={() => signInWithGoogle()}>
+            {/* TODO: 認証は仕様が固まってきてから */}
+            {/* <button className="rounded-md border px-2 py-1 hover:bg-zinc-600" onClick={() => signInWithGoogle()}>
               {t("auth.login_google")}
-            </button>
+            </button> */}
           </>
         )}
       </div>
