@@ -5,11 +5,13 @@ import React from "react";
 type Props = {
   rootMidi?: number | null;
   currentMidi?: number | null;
+  answerMidi?: number | null;
   frets?: number; // 表示フレット数（0含む）
   tuning?: number[]; // 各弦の開放音のMIDI（低→高）
   mode?: "root-only" | "current-only" | "both"; // 表示モード
   markByPcRoot?: boolean; // ルートをピッチクラス一致で表示
   markByPcCurrent?: boolean; // 現在音をピッチクラス一致で表示
+  markByPcAnswer?: boolean; // 答えをピッチクラス一致で表示
 };
 
 const defaultTuning = [28, 33, 38, 43]; // E1 A1 D2 G2（低→高）
@@ -24,9 +26,10 @@ function pc(m: number) {
   return ((Math.round(m) % 12) + 12) % 12;
 }
 
-export default function Fretboard({ rootMidi = null, currentMidi = null, frets = 12, tuning = defaultTuning, mode = "both", markByPcRoot = false, markByPcCurrent = false }: Props) {
+export default function Fretboard({ rootMidi = null, currentMidi = null, answerMidi = null, frets = 12, tuning = defaultTuning, mode = "both", markByPcRoot = false, markByPcCurrent = false, markByPcAnswer = false }: Props) {
   const rootRounded = rootMidi == null ? null : Math.round(rootMidi);
   const curRounded = currentMidi == null ? null : Math.round(currentMidi);
+  const ansRounded = answerMidi == null ? null : Math.round(answerMidi);
 
   // 表示は 上=1弦(G) 下=4弦(E) になるように高→低で並べる
   const ordered = [...tuning].reverse(); // 高→低
@@ -36,6 +39,9 @@ export default function Fretboard({ rootMidi = null, currentMidi = null, frets =
       <div className="mb-3 flex items-center gap-3 text-xs text-zinc-600">
         <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-red-500" /> ルート音の位置</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-blue-500" /> 現在音の位置</span>
+        {ansRounded != null && (
+          <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-emerald-500" /> 答え</span>
+        )}
       </div>
       {/* 横スクロールなしで全表示（コンテナ幅にフィット） */}
       {/* ラベル列をさらに狭めてフレット幅を最大化（左余白を極小化） */}
@@ -57,10 +63,22 @@ export default function Fretboard({ rootMidi = null, currentMidi = null, frets =
                 rootRounded != null && (markByPcRoot ? pc(m) === pc(rootRounded) : m === rootRounded);
               const curHit =
                 curRounded != null && (markByPcCurrent ? pc(m) === pc(curRounded) : m === curRounded);
+              const ansHit =
+                ansRounded != null && (markByPcAnswer ? pc(m) === pc(ansRounded) : m === ansRounded);
               const isRoot = mode !== "current-only" && rootHit;
               const isCur = mode !== "root-only" && curHit;
-              const showDot = isRoot || isCur;
-              const dotColor = isRoot && isCur ? "bg-purple-500" : isRoot ? "bg-red-500" : isCur ? "bg-blue-500" : "";
+              const isAns = ansHit;
+              const showDot = isRoot || isCur || isAns;
+              const overlapCount = (isRoot ? 1 : 0) + (isCur ? 1 : 0) + (isAns ? 1 : 0);
+              const dotColor = overlapCount >= 2
+                ? "bg-purple-500"
+                : isRoot
+                ? "bg-red-500"
+                : isCur
+                ? "bg-blue-500"
+                : isAns
+                ? "bg-emerald-500"
+                : "";
               const borderRight = fIdx === 0 ? "border-r-4 border-zinc-600" : "border-r"; // ナット太線
               const dotSize = 10;
               return (
