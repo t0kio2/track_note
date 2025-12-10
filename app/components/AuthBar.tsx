@@ -16,7 +16,6 @@ export default function AuthBar() {
   const [guest, setGuest] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
-  const showBrandText = pathname !== "/";
   const menuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const off = onAuthStateChange((s) => {
@@ -67,20 +66,18 @@ export default function AuthBar() {
         {/* ヘッダロゴ。public/logo.png を参照します */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="TrackNote" className="h-6 w-6 rounded" />
-        {showBrandText && (
-          <span className="text-2xl text-zinc-50 group-hover:text-zinc-600">TrackNote</span>
-        )}
+        <span className="text-2xl font-semibold text-zinc-900 group-hover:text-zinc-800 dark:text-zinc-50 dark:group-hover:text-zinc-200">TrackNote</span>
       </Link>
       <div className="flex items-center gap-2">
         {email ? (
           <>
-            <span className="text-zinc-100">{email}</span>
+            <span className="text-zinc-700 dark:text-zinc-200">{email}</span>
             <div className="relative" ref={menuRef}>
               <button
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 aria-label={t("auth.menu")}
-                className="p-2 text-zinc-50 hover:bg-zinc-100"
+                className="rounded-md p-2 text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
                 onClick={() => setMenuOpen((v) => !v)}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
@@ -88,21 +85,21 @@ export default function AuthBar() {
                 </svg>
               </button>
               {menuOpen && (
-                <div role="menu" className="absolute right-0 z-50 mt-2 w-44 overflow-hidden rounded-md border bg-white shadow-lg">
+                <div role="menu" className="absolute right-0 z-50 mt-2 w-44 overflow-hidden rounded-md border bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
                   <a
                     role="menuitem"
                     href="https://forms.gle/uHT1achWiPJh68hK6"
                     target="_blank"
                     rel="noreferrer"
-                    className="block w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                    className="block w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800"
                     onClick={() => setMenuOpen(false)}
                   >
                     {t("auth.contact")}
                   </a>
-                  <div className="my-1 h-px bg-zinc-200" />
+                  <div className="my-1 h-px bg-zinc-200 dark:bg-zinc-700" />
                   <button
                     role="menuitem"
-                    className="block w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                    className="block w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800"
                     onClick={async () => {
                       setMenuOpen(false);
                       await signOut();
@@ -112,9 +109,9 @@ export default function AuthBar() {
                   >
                     {t("auth.logout")}
                   </button>
-                  <div className="my-1 h-px bg-zinc-200" />
+                  <div className="my-1 h-px bg-zinc-200 dark:bg-zinc-700" />
                   <a
-                    className="block w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                    className="block w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800"
                     href={`/locale/set?lang=${locale === "ja" ? "en" : "ja"}`}
                   >
                     {locale === "ja" ? "English" : "日本語"}
@@ -126,16 +123,17 @@ export default function AuthBar() {
         ) : (
           <>
             {guest && (
-              <span className="rounded bg-amber-200/80 px-2 py-1 text-amber-900">
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs text-amber-700 ring-1 ring-amber-200/60 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800/60">
                 {t("auth.guest")}
               </span>
             )}
-            <a className="rounded-md border px-2 py-1 hover:bg-zinc-600" href={`/locale/set?lang=${locale === "ja" ? "en" : "ja"}`}>
+            <a className="rounded-full border border-zinc-300 px-3 py-1.5 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800" href={`/locale/set?lang=${locale === "ja" ? "en" : "ja"}`}>
               {locale === "ja" ? "English" : "日本語"}
             </a>
-            <button className="rounded-md border px-2 py-1 hover:bg-zinc-600" onClick={() => signInWithGoogle()}>
+            {/* TODO: 認証は仕様が固まってきてから */}
+            {/* <button className="rounded-md border px-2 py-1 hover:bg-zinc-600" onClick={() => signInWithGoogle()}>
               {t("auth.login_google")}
-            </button>
+            </button> */}
           </>
         )}
       </div>
