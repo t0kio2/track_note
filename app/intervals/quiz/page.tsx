@@ -88,6 +88,12 @@ export default function IntervalQuizPage() {
   const rootMidi = useMemo(() => makeRootMidiFromPc(rootPc), [rootPc]);
 
   const [judgement, setJudgement] = useState<"idle" | "listening" | "correct" | "wrong">("idle");
+  const [showAnswer, setShowAnswer] = useState(false);
+  // 採点に用いる参照（オーディオ処理クロージャの古い参照対策）
+  const rootPcRef = useRef<number>(rootPc);
+  const targetRef = useRef<number>(targetSemis);
+  useEffect(() => { rootPcRef.current = rootPc; }, [rootPc]);
+  useEffect(() => { targetRef.current = targetSemis; }, [targetSemis]);
 
   const audioRef = useRef<AudioContext | null>(null);
   const procRef = useRef<ScriptProcessorNode | null>(null);
@@ -205,11 +211,11 @@ export default function IntervalQuizPage() {
       setCurMidi(midi);
       setStatus(t("quiz.status.detected"));
 
-      // 採点
+      // 採点（常に最新の出題で判定するため、refを使用）
       const playedPc = pc(Math.round(midi));
-      const rootPcLocal = pc(rootMidi);
+      const rootPcLocal = ((rootPcRef.current % 12) + 12) % 12;
       const diff = ((playedPc - rootPcLocal) % 12 + 12) % 12;
-      const ok = diff === targetSemis;
+      const ok = diff === targetRef.current;
       setJudgement(ok ? "correct" : "wrong");
     };
 
@@ -270,6 +276,19 @@ export default function IntervalQuizPage() {
     const s = t("quiz.question");
     return s.replace("{root}", rootName).replace("{degree}", targetLabel);
   }
+
+  // 答え（ターゲットの音名と代表ポジション）
+  const answerPc = useMemo(() => ((rootPc + targetSemis) % 12 + 12) % 12, [rootPc, targetSemis]);
+  const answerNote = useMemo(() => NOTE_NAMES_SHARP[answerPc], [answerPc]);
+  // 代表ポジションのテキスト表示は不要のため、省略
+
+  // 指板に答えのポジションも表示するための擬似MIDI（PCだけ使用）
+  const answerMidiForBoard = useMemo(() => makeRootMidiFromPc(answerPc), [answerPc]);
+
+  // 探し方（同弦/上の弦）
+  const sameStringShift = targetSemis; // 同弦は +N フレット
+  const upperStringShift = targetSemis - 5; // 上の弦は +5半音 基準
+  const fmtShift = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `-${Math.abs(n)}` : `±0`);
 
   const curCents = useMemo(() => (curFreq && curMidi ? centsOff(curFreq, Math.round(curMidi)) : 0), [curFreq, curMidi]);
 
@@ -355,19 +374,21 @@ export default function IntervalQuizPage() {
         </div>
       </details>
 
-      <div className="mt-4 rounded-xl bg-white p-4 shadow-sm">
-        <div className="text-xs text-zinc-500">{t("quiz.question_label")}</div>
-        {/* 問題文（強調表示） */}
-        <div className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
-          {renderQuestion()}
+      <div className="mt-4 rounded-xl bg-white p-4 shadow-sm mx-auto max-w-md">
+        <div className="text-center">
+          <div className="text-xs text-zinc-500">{t("quiz.question_label")}</div>
+          {/* 問題文（強調表示） */}
+          <div className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
+            {renderQuestion()}
+          </div>
         </div>
         {/* 補助トークン（視覚的に分かりやすく、重複読み上げ防止のため非アクセシブル） */}
-        <div className="mt-2 flex flex-wrap items-center gap-2" aria-hidden>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2" aria-hidden>
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">{rootName}</span>
           <span className="text-zinc-400">→</span>
           <span className="rounded-full bg-violet-50 px-3 py-1 text-sm font-medium text-violet-700">{targetLabel}</span>
         </div>
-        <div className="mt-3 flex items-center gap-2 text-sm">
+        <div className="mt-3 flex items-center justify-start gap-2 text-sm">
           <span className="text-zinc-600">{t("quiz.judge")}</span>
           {judgement === "idle" && (
             <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-700">{t("quiz.judge_idle")}</span>
@@ -391,15 +412,46 @@ export default function IntervalQuizPage() {
             <span>{t("quiz.current_note_none")}</span>
           )}
         </div>
+
+        <div className="mt-3 flex justify-center">
+          <button
+            onClick={() => setShowAnswer((v) => !v)}
+            className="rounded-full border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
+          >
+            {showAnswer ? t("quiz.hide_answer") : t("quiz.show_answer")}
+          </button>
+        </div>
+        {showAnswer && (
+            <div className="mt-2 text-sm text-zinc-800">
+              <div className="flex items-center justify-center gap-2">
+                <span className="font-medium">{t("quiz.answer_label")}:</span>
+                <span className="rounded bg-zinc-100 px-2 py-0.5 text-zinc-800">{answerNote}</span>
+              </div>
+              {/* 代表ポジションのテキスト表示は非表示 */}
+              <div className="mt-2 text-xs text-zinc-600">
+                <div className="font-medium text-zinc-700">{t("quiz.finding_title")}:</div>
+                <div className="mt-1">
+                  <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-700">{t("quiz.finding_same_string")}: {fmtShift(sameStringShift)}f</span>
+                </div>
+                <div className="mt-1">
+                  <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-700">{t("quiz.finding_upper_string")}: {fmtShift(upperStringShift)}f</span>
+                  <span className="ml-1 text-[11px] text-zinc-500">({t("quiz.upper_string_hint")})</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mt-4">
         <Fretboard
           rootMidi={rootMidi}
           currentMidi={curMidi ?? undefined}
+          answerMidi={showAnswer ? answerMidiForBoard : undefined}
           frets={12}
           mode={"both"}
           markByPcRoot
+          markByPcAnswer={showAnswer}
         />
       </div>
 
@@ -411,7 +463,6 @@ export default function IntervalQuizPage() {
           <li>{t("quiz.howto.3")}</li>
           <li>{t("quiz.howto.4")}</li>
         </ul>
-      </div>
       </div>
     </div>
   );
