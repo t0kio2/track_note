@@ -77,13 +77,13 @@ const ja: Dict = {
   "hint.blocksize_change": "変更時は既存の進捗を「最大値」で変換します。",
 
   // Hub
-  "hub.subtitle": "練習モジュールのハブ",
-  "hub.progress.title": "YouTube コピー練習",
-  "hub.progress.desc": "動画一覧・追加・個別練習タイムライン",
+  "hub.subtitle": "TrackNote は、曲の練習や音程・コード理論を “見える化” して上達を助ける 練習ツール集です。",
+  "hub.progress.title": "曲コピー進捗記録",
+  "hub.progress.desc": "YouTubeを使った曲コピーの進捗を記録🚀",
   "hub.intervals.title": "音程練習",
-  "hub.intervals.desc": "リアルタイム音程検出で度数を確認",
+  "hub.intervals.desc": " “度数” と “指板上の位置” をリアルタイムで表示👀",
   "hub.intervals_quiz.title": "度数クイズ",
-  "hub.intervals_quiz.desc": "『Cの3度を弾いてください』などを出題・採点",
+  "hub.intervals_quiz.desc": "正しい度数を演奏して答えるインタラクティブトレーニング💪",
 
   // Progress module
   "progress.title": "YouTube コピー練習",
@@ -229,13 +229,13 @@ const en: Dict = {
   "hint.blocksize_change": "Existing progress is converted using the max value.",
 
   // Hub
-  "hub.subtitle": "Practice modules hub",
-  "hub.progress.title": "YouTube Copy Practice",
-  "hub.progress.desc": "Video list, add, and per-video timeline",
+  "hub.subtitle": "TrackNote is a suite of practice tools that visualizes song practice, intervals, and chord theory to help you improve.",
+  "hub.progress.title": "Copy Progress Tracker",
+  "hub.progress.desc": "Track your copy progress with YouTube 🚀",
   "hub.intervals.title": "Interval Practice",
-  "hub.intervals.desc": "Realtime pitch detection with degree feedback",
+  "hub.intervals.desc": "Show degrees and fretboard positions in real time 👀",
   "hub.intervals_quiz.title": "Interval Quiz",
-  "hub.intervals_quiz.desc": "Prompts like ‘Play a 3rd over C’ and scores your note",
+  "hub.intervals_quiz.desc": "Interactive training: play the correct degree 💪",
 
   // Progress module
   "progress.title": "YouTube Copy Practice",
