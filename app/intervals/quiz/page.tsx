@@ -109,6 +109,8 @@ export default function IntervalQuizPage() {
     setRootPc(Math.floor(Math.random() * 12));
     setTargetSemis(randomElement(ALL_DEGREES));
     setJudgement("idle");
+    // 次の問題へ進むときは答え表示を閉じる
+    setShowAnswer(false);
   };
 
   // 入力デバイス取得
@@ -443,7 +445,7 @@ export default function IntervalQuizPage() {
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mx-auto max-w-3xl px-3 mt-4">
         <Fretboard
           rootMidi={rootMidi}
           currentMidi={curMidi ?? undefined}
@@ -455,7 +457,7 @@ export default function IntervalQuizPage() {
         />
       </div>
 
-      <div className="mt-8 text-sm text-zinc-600">
+      <div className="mx-auto max-w-3xl px-3 mt-8 text-sm text-zinc-600">
         <p className="font-medium">{t("quiz.howto.title")}</p>
         <ul className="mt-1 list-disc pl-5 space-y-1">
           <li>{t("quiz.howto.1")}</li>
