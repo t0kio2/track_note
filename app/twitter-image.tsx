@@ -62,9 +62,9 @@ export default function TwitterImage() {
           }}
         >
           <div style={{ fontSize: 60, fontWeight: 900, letterSpacing: -1 }}>{title}</div>
-          <div style={{ fontSize: 26, color: "#334155" }}>
-            音楽練習を“見える化”するトレーニングアプリ。<br />
-            コピー練習からコード・音程・アドリブの基礎までサポート
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 26, color: "#334155" }}>
+            <span>音楽練習を“見える化”するトレーニングアプリ。</span>
+            <span>コピー練習からコード・音程・アドリブの基礎までサポート</span>
           </div>
         </div>
       </div>

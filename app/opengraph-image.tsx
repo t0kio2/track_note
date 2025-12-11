@@ -20,7 +20,6 @@ export default function OgImage() {
           color: "#0f172a",
         }}
       >
-        {/* Left: logo panel */}
         <div
           style={{
             width: 360,
@@ -51,7 +50,6 @@ export default function OgImage() {
             TN
           </div>
         </div>
-        {/* Right: title and subtitle */}
         <div
           style={{
             flex: 1,
@@ -64,9 +62,9 @@ export default function OgImage() {
           }}
         >
           <div style={{ fontSize: 60, fontWeight: 900, letterSpacing: -1 }}>{title}</div>
-          <div style={{ fontSize: 26, color: "#334155" }}>
-            音楽練習を“見える化”するトレーニングアプリ。<br />
-            コピー練習からコード・音程・アドリブの基礎までサポート
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 26, color: "#334155" }}>
+            <span>音楽練習を“見える化”するトレーニングアプリ。</span>
+            <span>コピー練習からコード・音程・アドリブの基礎までサポート</span>
           </div>
         </div>
       </div>
