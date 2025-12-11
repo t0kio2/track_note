@@ -167,6 +167,14 @@ const ja: Dict = {
   "quiz.howto.3": "合っていれば『正解』、違えば『不正解』と表示されます。",
   "quiz.howto.4": "『次の問題』でランダムに出題を切り替えられます。",
 
+  // Fretboard legends
+  "fret.legend.root": "ルート音の位置",
+  "fret.legend.current": "現在音の位置",
+  "fret.legend.answer": "答え",
+  "fret.tooltip.root_current": "ルート・現在",
+  "fret.tooltip.root": "ルート",
+  "fret.tooltip.current": "現在",
+
   // Triads (三和音クイズ)
   "triads.title": "三和音クイズ",
   "triads.subtitle": "指定されたルート/転回形のトライアドを、指定の順番で弾いてください（オクターブ自由）。",
@@ -412,6 +420,14 @@ const en: Dict = {
   "quiz.howto.2": "Play the requested degree in any octave (octave is free).",
   "quiz.howto.3": "It shows ‘Correct’ if matched; otherwise ‘Wrong’.",
   "quiz.howto.4": "Use ‘Next Question’ to get a new random prompt.",
+
+  // Fretboard legends
+  "fret.legend.root": "Root position",
+  "fret.legend.current": "Current position",
+  "fret.legend.answer": "Answer",
+  "fret.tooltip.root_current": "Root & Current",
+  "fret.tooltip.root": "Root",
+  "fret.tooltip.current": "Current",
 
   // Triads (Triads Quiz)
   "triads.title": "Triads Quiz",
