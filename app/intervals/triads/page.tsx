@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import IntervalsClient from "./Client";
+import TriadQuizClient from "./Client";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: "Intervals",
+  title: "Triads Quiz",
 };
 
 export default function Page() {
-  return <IntervalsClient />;
+  return <TriadQuizClient />;
 }
 

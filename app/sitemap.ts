@@ -11,6 +11,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/progress/new", priority: 0.5 as number, changeFrequency: "weekly" as const },
     { path: "/intervals", priority: 0.6 as number, changeFrequency: "weekly" as const },
     { path: "/intervals/quiz", priority: 0.5 as number, changeFrequency: "weekly" as const },
+    { path: "/intervals/triads", priority: 0.5 as number, changeFrequency: "weekly" as const },
+    { path: "/intervals/tetrads", priority: 0.5 as number, changeFrequency: "weekly" as const },
   ];
 
   const urls: MetadataRoute.Sitemap = routes.map((r) => ({
