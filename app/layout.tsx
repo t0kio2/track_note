@@ -95,8 +95,8 @@ export default async function RootLayout({
   const year = new Date().getFullYear();
   const version = process.env.NEXT_PUBLIC_APP_VERSION || (pkg as any).version || "0.0.0";
   return (
-    <html lang={headerLocale}>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang={headerLocale} className="bg-zinc-50">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-50 min-h-screen flex flex-col`}>
         {/* JSON-LD structured data */}
         <script
           type="application/ld+json"
@@ -125,16 +125,18 @@ export default async function RootLayout({
           }}
         />
         <LocaleProvider locale={headerLocale}>
-          <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:bg-black/90 supports-[backdrop-filter]:dark:bg-black/80">
+          <div className="sticky top-0 z-40 bg-white/95 backdrop-blur dark:bg-black/90">
             <div className="mx-auto max-w-5xl px-4 py-2">
               <AuthBar />
             </div>
             <div className="h-px w-full bg-zinc-200/70 dark:bg-zinc-800/60" />
           </div>
-          {children}
-          <footer className="mt-10">
-            <div className="mx-auto max-w-5xl px-4 py-6 text-center text-xs text-zinc-500">
-              © {year} TrackNote · v{version}
+          <main className="flex-1 pb-12 md:pb-20">
+            {children}
+          </main>
+          <footer className="border-t border-zinc-200/70 dark:border-zinc-800/60 bg-white/95 backdrop-blur dark:bg-black/90">
+            <div className="mx-auto max-w-5xl px-4 py-6 text-center text-xs text-zinc-100">
+              © {year} TrackNote v{version}
             </div>
           </footer>
           <Suspense fallback={null}>

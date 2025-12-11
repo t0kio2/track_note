@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useT } from "@/app/components/LocaleProvider";
 
 type Props = {
   rootMidi?: number | null;
@@ -27,6 +28,7 @@ function pc(m: number) {
 }
 
 export default function Fretboard({ rootMidi = null, currentMidi = null, answerMidi = null, frets = 12, tuning = defaultTuning, mode = "both", markByPcRoot = false, markByPcCurrent = false, markByPcAnswer = false }: Props) {
+  const t = useT();
   const rootRounded = rootMidi == null ? null : Math.round(rootMidi);
   const curRounded = currentMidi == null ? null : Math.round(currentMidi);
   const ansRounded = answerMidi == null ? null : Math.round(answerMidi);
@@ -37,10 +39,10 @@ export default function Fretboard({ rootMidi = null, currentMidi = null, answerM
   return (
     <div className="rounded-xl bg-white px-2 py-4 shadow-sm">
       <div className="mb-3 flex items-center gap-3 text-xs text-zinc-600">
-        <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-red-500" /> ルート音の位置</span>
-        <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-blue-500" /> 現在音の位置</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-red-500" /> {t("fret.legend.root")}</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-blue-500" /> {t("fret.legend.current")}</span>
         {ansRounded != null && (
-          <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-emerald-500" /> 答え</span>
+          <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-emerald-500" /> {t("fret.legend.answer")}</span>
         )}
       </div>
       {/* 横スクロールなしで全表示（コンテナ幅にフィット） */}
@@ -97,7 +99,15 @@ export default function Fretboard({ rootMidi = null, currentMidi = null, answerM
                     <div
                       className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${dotColor} rounded-full`}
                       style={{ width: dotSize, height: dotSize }}
-                      title={isRoot && isCur ? "ルート・現在" : isRoot ? "ルート" : "現在"}
+                      title={
+                        isRoot && isCur
+                          ? t("fret.tooltip.root_current")
+                          : isRoot
+                          ? t("fret.tooltip.root")
+                          : isCur
+                          ? t("fret.tooltip.current")
+                          : undefined
+                      }
                     />
                   )}
                 </div>
