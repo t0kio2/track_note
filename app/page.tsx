@@ -75,7 +75,7 @@ export default function HomeHub() {
                 className="group block rounded-xl bg-white p-5 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600"
               >
                 <div className="flex items-start gap-3">
-                  <div aria-hidden className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-md bg-rose-100 text-rose-700">🎼</div>
+                  <div aria-hidden className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-md bg-rose-100 text-rose-700">🎶</div>
                   <div className="min-w-0">
                     <h2 id="card-triads-title" className="truncate text-base font-medium text-zinc-900">
                       {t("hub.triads.title")}
@@ -93,7 +93,7 @@ export default function HomeHub() {
                 className="group block rounded-xl bg-white p-5 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600"
               >
                 <div className="flex items-start gap-3">
-                  <div aria-hidden className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-md bg-sky-100 text-sky-700">🎶</div>
+                  <div aria-hidden className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-md bg-sky-100 text-sky-700">🎼</div>
                   <div className="min-w-0">
                     <h2 id="card-tetrads-title" className="truncate text-base font-medium text-zinc-900">
                       {t("hub.tetrads.title")}
