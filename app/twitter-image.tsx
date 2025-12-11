@@ -5,6 +5,7 @@ export const contentType = "image/png";
 
 export default function TwitterImage() {
   const { width, height } = size;
+  const title = "TrackNote - 音楽練習の見える化ツール";
   return new ImageResponse(
     (
       <div
@@ -12,18 +13,59 @@ export default function TwitterImage() {
           width,
           height,
           display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "flex-start",
-          padding: 64,
-          background: "#0ea5e9",
-          color: "#fff",
-          fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+          flexDirection: "row",
+          fontFamily:
+            "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+          background: "#ffffff",
+          color: "#0f172a",
         }}
       >
-        <div style={{ fontSize: 64, fontWeight: 800, letterSpacing: -1 }}>TrackNote</div>
-        <div style={{ marginTop: 16, fontSize: 28, opacity: 0.95 }}>
-          練習と理論を“見える化”する 楽器練習ツール集
+        <div
+          style={{
+            width: 360,
+            height,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#f8fafc",
+            borderRight: "1px solid #e5e7eb",
+          }}
+        >
+          <div
+            style={{
+              width: 140,
+              height: 140,
+              borderRadius: 28,
+              background: "#0ea5e9",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#ffffff",
+              fontSize: 64,
+              fontWeight: 900,
+              letterSpacing: -1,
+              boxShadow: "0 8px 24px rgba(14,165,233,0.35)",
+            }}
+          >
+            TN
+          </div>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            height,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            padding: "0 64px",
+            gap: 16,
+          }}
+        >
+          <div style={{ fontSize: 60, fontWeight: 900, letterSpacing: -1 }}>{title}</div>
+          <div style={{ fontSize: 26, color: "#334155" }}>
+            音楽練習を“見える化”するトレーニングアプリ。<br />
+            コピー練習からコード・音程・アドリブの基礎までサポート
+          </div>
         </div>
       </div>
     ),
