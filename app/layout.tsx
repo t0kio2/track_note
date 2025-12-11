@@ -24,11 +24,31 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
 
 export const metadata: Metadata = {
   title: {
-    default: "TrackNote",
+    default: "TrackNote - 音楽練習の見える化ツール",
     template: "%s | TrackNote",
   },
-  description: "YouTube のタブ譜動画で練習進捗を記録・管理できるアプリ",
+  description:
+    "TrackNoteはYouTube動画の曲コピー練習・音程トレーニング・コードトーンなど、楽器練習を見える化するWebアプリ。ゲストモードで今すぐ利用できます。",
   metadataBase: siteUrl ? new URL(siteUrl) : undefined,
+  applicationName: "TrackNote",
+  keywords: [
+    "練習ツール",
+    "練習記録",
+    "練習進捗",
+    "音程",
+    "コード理論",
+    "インターバル",
+    "度数",
+    "耳トレ",
+    "指板",
+    "ギター",
+    "ベース",
+    "TrackNote",
+    "曲コピー",
+    "タブ譜",
+    "YouTube",
+  ],
+  category: "Music",
   alternates: {
     canonical: siteUrl ? "/" : undefined,
   },
@@ -37,15 +57,15 @@ export const metadata: Metadata = {
     url: siteUrl || undefined,
     siteName: "TrackNote",
     title: "TrackNote",
-    description: "YouTube のタブ譜動画で練習進捗を記録・管理",
+    description:
+      "TrackNoteはYouTube動画の曲コピー練習・音程トレーニング・コードトーンなど、楽器練習を見える化するWebアプリ。ゲストモードで今すぐ利用できます。",
     images: [{ url: "/opengraph-image" }],
   },
   twitter: {
     card: "summary_large_image",
-    site: "@",
-    creator: "@",
     title: "TrackNote",
-    description: "YouTube のタブ譜動画で練習進捗を記録・管理",
+    description:
+      "TrackNoteはYouTube動画の曲コピー練習・音程トレーニング・コードトーンなど、楽器練習を見える化するWebアプリ。ゲストモードで今すぐ利用できます。",
     images: ["/twitter-image"],
   },
   robots: {
@@ -53,7 +73,15 @@ export const metadata: Metadata = {
     follow: true,
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/logo.png", type: "image/png", sizes: "192x192" },
+      { url: "/logo.png", type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [
+      { url: "/logo.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
@@ -78,7 +106,21 @@ export default async function RootLayout({
               "@type": "WebApplication",
               name: "TrackNote",
               url: siteUrl || undefined,
+              description:
+                "TrackNoteはYouTube動画の曲コピー練習・音程トレーニング・コードトーンなど、楽器練習を見える化するWebアプリ。ゲストモードで今すぐ利用できます。",
               applicationCategory: "Music",
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "TrackNote",
+              alternateName: ["Track Note"],
+              url: siteUrl || undefined,
             }),
           }}
         />
