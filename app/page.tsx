@@ -68,6 +68,42 @@ export default function HomeHub() {
                 </div>
               </Link>
             </li>
+            <li>
+              <Link
+                href="/intervals/triads"
+                aria-labelledby="card-triads-title"
+                className="group block rounded-xl bg-white p-5 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600"
+              >
+                <div className="flex items-start gap-3">
+                  <div aria-hidden className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-md bg-rose-100 text-rose-700">🎼</div>
+                  <div className="min-w-0">
+                    <h2 id="card-triads-title" className="truncate text-base font-medium text-zinc-900">
+                      {t("hub.triads.title")}
+                    </h2>
+                    <p className="mt-0.5 line-clamp-2 text-sm text-zinc-600">{t("hub.triads.desc")}</p>
+                  </div>
+                  <div aria-hidden className="ml-auto mt-1 text-zinc-400 transition group-hover:translate-x-0.5">→</div>
+                </div>
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/intervals/tetrads"
+                aria-labelledby="card-tetrads-title"
+                className="group block rounded-xl bg-white p-5 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:bg-zinc-50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600"
+              >
+                <div className="flex items-start gap-3">
+                  <div aria-hidden className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-md bg-sky-100 text-sky-700">🎶</div>
+                  <div className="min-w-0">
+                    <h2 id="card-tetrads-title" className="truncate text-base font-medium text-zinc-900">
+                      {t("hub.tetrads.title")}
+                    </h2>
+                    <p className="mt-0.5 line-clamp-2 text-sm text-zinc-600">{t("hub.tetrads.desc")}</p>
+                  </div>
+                  <div aria-hidden className="ml-auto mt-1 text-zinc-400 transition group-hover:translate-x-0.5">→</div>
+                </div>
+              </Link>
+            </li>
           </ul>
         </section>
       </main>

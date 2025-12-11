@@ -15,7 +15,6 @@ export default function AuthBar() {
   const [email, setEmail] = useState<string | null>(null);
   const [guest, setGuest] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const pathname = usePathname();
   const menuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const off = onAuthStateChange((s) => {
