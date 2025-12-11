@@ -20,7 +20,6 @@ export default function OgImage() {
           color: "#0f172a",
         }}
       >
-        {/* Left: logo panel */}
         <div
           style={{
             width: 360,
@@ -51,7 +50,6 @@ export default function OgImage() {
             TN
           </div>
         </div>
-        {/* Right: title and subtitle */}
         <div
           style={{
             flex: 1,
