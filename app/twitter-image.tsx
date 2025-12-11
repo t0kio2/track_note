@@ -23,11 +23,10 @@ export default function TwitterImage() {
       >
         <div style={{ fontSize: 64, fontWeight: 800, letterSpacing: -1 }}>TrackNote</div>
         <div style={{ marginTop: 16, fontSize: 28, opacity: 0.95 }}>
-          Practice progress tracking for YouTube performances
+          練習と理論を“見える化”する 楽器練習ツール集
         </div>
       </div>
     ),
     { width, height }
   );
 }
-
