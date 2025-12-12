@@ -5,14 +5,14 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: "度数クイズ (Intervals Quiz)",
+  title: "度数トレーニング (Intervals Training)",
   description:
-    "指定された度数をマイクで弾いて自動判定。耳と理論のトレーニングに最適なインタラクティブクイズ。",
+    "指定された度数をマイクで弾いて自動判定。耳と理論のトレーニングに最適なインタラクティブツール。",
   keywords: [
-    "度数クイズ",
+    "度数トレーニング",
     "インターバル",
     "耳トレ",
-    "interval quiz",
+    "interval training",
     "ear training",
   ],
 };

@@ -4,28 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/app/components/LocaleProvider";
 import * as Pitchfinder from "pitchfinder";
 import Fretboard from "@/app/components/Fretboard";
+import { centsOff, freqToMidi, NOTE_NAMES_SHARP, notePcName, pc, DEGREE_LABEL } from "@/app/lib/music";
 
 type Detector = (data: Float32Array) => number | null;
 
-function freqToMidi(freq: number) {
-  return 69 + 12 * Math.log2(freq / 440);
-}
-
-function midiToFreq(midi: number) {
-  return 440 * Math.pow(2, (midi - 69) / 12);
-}
-
-function centsOff(freq: number, midi: number) {
-  const ref = midiToFreq(midi);
-  return Math.round(1200 * Math.log2(freq / ref));
-}
-
-const NOTE_NAMES_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"] as const;
-
-function pc(n: number) { return ((Math.round(n) % 12) + 12) % 12; }
-function notePcName(midi: number) { return NOTE_NAMES_SHARP[pc(midi)]; }
-
-const DEGREE_LABEL: Record<number, string> = { 0: "R", 1: "b2", 2: "2", 3: "b3", 4: "3", 5: "4", 6: "#4/b5", 7: "5", 8: "#5/b6", 9: "6", 10: "b7", 11: "7" };
+// 度数ラベルは共通ユーティリティから参照
 const ALL_DEGREES = [1,2,3,4,5,6,7,8,9,10,11] as const; // Rは除外
 function randomElement<T>(arr: readonly T[]) { return arr[Math.floor(Math.random() * arr.length)]; }
 function makeRootMidiFromPc(pcIndex: number) { const baseC3 = 48; return baseC3 + ((pcIndex % 12) + 12) % 12; }
@@ -276,4 +259,3 @@ export default function IntervalQuizClient() {
     </div>
   );
 }
-

@@ -20,9 +20,6 @@ export function middleware(req: NextRequest) {
     locale = pickFromAcceptLanguage(req.headers.get("accept-language"));
   }
 
-  console.log("locale: ", locale)
-  console.log('req.headers.get("accept-language"): ', req.headers.get("accept-language"))
-
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-locale", locale);
   return NextResponse.next({ request: { headers: requestHeaders } });

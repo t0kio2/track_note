@@ -4,58 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/app/components/LocaleProvider";
 import * as Pitchfinder from "pitchfinder";
 import Fretboard from "@/app/components/Fretboard";
+import { centsOff, freqToMidi, noteNameFromMidi, DEGREE_LABEL } from "@/app/lib/music";
 
 type Detector = (data: Float32Array) => number | null;
 
-function freqToMidi(freq: number) {
-  return 69 + 12 * Math.log2(freq / 440);
-}
-
-function midiToFreq(midi: number) {
-  return 440 * Math.pow(2, (midi - 69) / 12);
-}
-
-function centsOff(freq: number, midi: number) {
-  const ref = midiToFreq(midi);
-  return Math.round(1200 * Math.log2(freq / ref));
-}
-
-const NOTE_NAMES_SHARP = [
-  "C",
-  "C#",
-  "D",
-  "D#",
-  "E",
-  "F",
-  "F#",
-  "G",
-  "G#",
-  "A",
-  "A#",
-  "B",
-] as const;
-
-function noteNameFromMidi(midi: number) {
-  const n = Math.round(midi);
-  const name = NOTE_NAMES_SHARP[(n + 1200) % 12];
-  const octave = Math.floor(n / 12) - 1;
-  return `${name}${octave}`;
-}
-
-const DEGREE_MAP: Record<number, string> = {
-  0: "R", // ルート
-  1: "b2", // 短2度
-  2: "2", // 長2度
-  3: "b3", // 短3度
-  4: "3", // 長3度
-  5: "4", // 完全4度
-  6: "b5/#4", // 増4度
-  7: "5", // 完全5度
-  8: "b6/#5", // 増5度
-  9: "6", // 長6度
-  10: "b7", // 短7度
-  11: "7", // 長7度
-};
+// 度数ラベルは共通ユーティリティから参照
 
 export default function IntervalsClient() {
   const t = useT();
@@ -185,7 +138,7 @@ export default function IntervalsClient() {
 
       const diff = Math.round(midi) - Math.round(rootMidiRef.current!);
       const semis = ((diff % 12) + 12) % 12;
-      setDegree(DEGREE_MAP[semis] ?? "-");
+      setDegree(DEGREE_LABEL[semis] ?? "-");
     };
 
     source.connect(proc);
@@ -327,4 +280,3 @@ export default function IntervalsClient() {
     </div>
   );
 }
-

@@ -4,15 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as Pitchfinder from "pitchfinder";
 import Fretboard from "@/app/components/Fretboard";
 import { useT } from "@/app/components/LocaleProvider";
+import { centsOff, freqToMidi, NOTE_NAMES_SHARP, pc } from "@/app/lib/music";
 
 type Detector = (data: Float32Array) => number | null;
-
-const NOTE_NAMES_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"] as const;
-const pc = (n: number) => ((Math.round(n) % 12) + 12) % 12;
-
-function freqToMidi(freq: number) { return 69 + 12 * Math.log2(freq / 440); }
-function midiToFreq(midi: number) { return 440 * Math.pow(2, (midi - 69) / 12); }
-function centsOff(freq: number, midi: number) { const ref = midiToFreq(midi); return Math.round(1200 * Math.log2(freq / ref)); }
 
 const TRIADS = [
   { key: "major", label: "メジャートライアド", semis: [0, 4, 7] as const, degreeLabels: ["R", "3", "5"] },

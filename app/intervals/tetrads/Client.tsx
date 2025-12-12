@@ -4,17 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as Pitchfinder from "pitchfinder";
 import { useT } from "@/app/components/LocaleProvider";
 import Fretboard from "@/app/components/Fretboard";
+import { centsOff, freqToMidi, NOTE_NAMES_SHARP, pc } from "@/app/lib/music";
 
 type Detector = (data: Float32Array) => number | null;
 
-const NOTE_NAMES_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"] as const;
-const pc = (n: number) => ((Math.round(n) % 12) + 12) % 12;
-
-function freqToMidi(freq: number) { return 69 + 12 * Math.log2(freq / 440); }
-function midiToFreq(midi: number) { return 440 * Math.pow(2, (midi - 69) / 12); }
-function centsOff(freq: number, midi: number) { const ref = midiToFreq(midi); return Math.round(1200 * Math.log2(freq / ref)); }
-
-// 4和音: maj7, 7, m7, m7b5(half-diminished), dim7
+// 四和音: maj7, 7, m7, m7b5(half-diminished), dim7
 const TETRADS = [
   { key: "maj7", labelKey: "tetrads.kind.maj7", semis: [0, 4, 7, 11] as const, degreeLabels: ["R", "3", "5", "7"] },
   { key: "7",    labelKey: "tetrads.kind.dom7", semis: [0, 4, 7, 10] as const, degreeLabels: ["R", "3", "5", "b7"] },
@@ -328,4 +322,3 @@ function makeRootMidiFromPc(pcIndex: number) {
   const baseC3 = 48; // C3
   return baseC3 + ((pcIndex % 12) + 12) % 12;
 }
-

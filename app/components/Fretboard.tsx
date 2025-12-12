@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useT } from "@/app/components/LocaleProvider";
+import { notePcName, pc } from "@/app/lib/music";
 
 type Props = {
   rootMidi?: number | null;
@@ -17,15 +18,7 @@ type Props = {
 
 const defaultTuning = [28, 33, 38, 43]; // E1 A1 D2 G2（低→高）
 
-const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"] as const;
-function noteNamePc(m: number) {
-  const p = ((Math.round(m) % 12) + 12) % 12;
-  return NOTE_NAMES[p];
-}
-
-function pc(m: number) {
-  return ((Math.round(m) % 12) + 12) % 12;
-}
+// NOTE_NAMES, pc 等は共通ユーティリティから利用
 
 export default function Fretboard({ rootMidi = null, currentMidi = null, answerMidi = null, frets = 12, tuning = defaultTuning, mode = "both", markByPcRoot = false, markByPcCurrent = false, markByPcAnswer = false }: Props) {
   const t = useT();
@@ -57,7 +50,7 @@ export default function Fretboard({ rootMidi = null, currentMidi = null, answerM
         {ordered.map((open, sIdx) => (
           <React.Fragment key={sIdx}>
             {/* 弦ラベル：弦番号を除き、開放音のコード名のみ表示（左余白を最小化） */}
-            <div className="flex items-center justify-end pr-0 text-[10px] text-zinc-600">{noteNamePc(open)}</div>
+            <div className="flex items-center justify-end pr-0 text-[10px] text-zinc-600">{notePcName(open)}</div>
             {/* フレットマス */}
             {Array.from({ length: frets + 1 }).map((_, fIdx) => {
               const m = open + fIdx; // そのマスの正確なMIDIノート

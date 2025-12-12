@@ -60,9 +60,9 @@ export const metadata: Metadata = {
     "ハーフディミニッシュ",
     "ディミニッシュドセブンス",
     // Training (JP)
-    "インターバルクイズ",
-    "三和音クイズ",
-    "4和音クイズ",
+    "インターバルトレーニング",
+    "三和音トレーニング",
+    "四和音トレーニング",
     "耳コピ",
     // English keywords
     "music practice app",

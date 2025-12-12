@@ -82,7 +82,7 @@ const ja: Dict = {
   "hub.progress.desc": "YouTubeを使った曲コピーの進捗を記録🚀",
   "hub.intervals.title": "音程練習",
   "hub.intervals.desc": "音を鳴らすと度数名とポジションをリアルタイムで表示👀",
-  "hub.intervals_quiz.title": "度数クイズ",
+  "hub.intervals_quiz.title": "度数トレーニング",
   "hub.intervals_quiz.desc": "正しい度数を演奏して答えるインタラクティブトレーニング",
   "hub.triads.title": "三和音トレーニング",
   "hub.triads.desc": "Major / Minor / Augmented / Diminished の三和音トレーニング",
@@ -130,8 +130,8 @@ const ja: Dict = {
   "intervals.howto.4": "雑音が多い環境では検出が不安定になる場合があります。",
   "intervals.howto.5": "指板では、赤=ルート音、青=現在音の同ピッチ位置を全弦で表示します（重なると紫）。",
   
-  // Quiz (Intervals Quiz)
-  "quiz.title": "度数クイズ",
+  // Quiz (Intervals Training)
+  "quiz.title": "度数トレーニング",
   "quiz.subtitle": "例: 『Cの3度を弾いてください』。マイク入力で判定します。",
   "quiz.start": "開始",
   "quiz.stop": "停止",
@@ -175,8 +175,8 @@ const ja: Dict = {
   "fret.tooltip.root": "ルート",
   "fret.tooltip.current": "現在",
 
-  // Triads (三和音クイズ)
-  "triads.title": "三和音クイズ",
+  // Triads (三和音トレーニング)
+  "triads.title": "三和音トレーニング",
   "triads.subtitle": "指定されたルート/転回形のトライアドを、指定の順番で弾いてください（オクターブ自由）。",
   "triads.start": "開始",
   "triads.stop": "停止",
@@ -215,9 +215,9 @@ const ja: Dict = {
   "triads.inversion_mode.title": "転回形",
   "triads.inversion_mode.mix": "ミックス",
 
-  // Tetrads (4和音クイズ)
-  "tetrads.title": "4和音クイズ",
-  "tetrads.subtitle": "指定されたルート/転回形の4和音を、指定の順番で弾いてください（オクターブ自由）。",
+  // Tetrads (四和音トレーニング)
+  "tetrads.title": "四和音トレーニング",
+  "tetrads.subtitle": "指定されたルート/転回形の四和音を、指定の順番で弾いてください（オクターブ自由）。",
   "tetrads.start": "開始",
   "tetrads.stop": "停止",
   "tetrads.next": "次の問題",
@@ -336,11 +336,11 @@ const en: Dict = {
   "hub.progress.desc": "Track your copy progress with YouTube 🚀",
   "hub.intervals.title": "Interval Practice",
   "hub.intervals.desc": "Show degrees and fretboard positions in real time 👀",
-  "hub.intervals_quiz.title": "Interval Quiz",
+  "hub.intervals_quiz.title": "Interval Training",
   "hub.intervals_quiz.desc": "Interactive training: play the correct degree 💪",
-  "hub.triads.title": "Triads Quiz",
+  "hub.triads.title": "Triads Training",
   "hub.triads.desc": "Judge major/minor/augmented/diminished triads in order",
-  "hub.tetrads.title": "Tetrads Quiz",
+  "hub.tetrads.title": "Tetrads Training",
   "hub.tetrads.desc": "Practice maj7/7/m7/m7b5/dim7 tetrads",
 
   // Progress module
@@ -384,8 +384,8 @@ const en: Dict = {
   "intervals.howto.4": "In noisy environments detection may become unstable.",
   "intervals.howto.5": "On the fretboard, red=Root and blue=Current show same-pitch positions across strings (overlap = purple).",
   
-  // Quiz (Intervals Quiz)
-  "quiz.title": "Interval Quiz",
+  // Quiz (Intervals Training)
+  "quiz.title": "Interval Training",
   "quiz.subtitle": "e.g., ‘Play a 3rd over C’. Uses microphone to judge.",
   "quiz.start": "Start",
   "quiz.stop": "Stop",
@@ -429,8 +429,8 @@ const en: Dict = {
   "fret.tooltip.root": "Root",
   "fret.tooltip.current": "Current",
 
-  // Triads (Triads Quiz)
-  "triads.title": "Triads Quiz",
+  // Triads (Triads Training)
+  "triads.title": "Triads Training",
   "triads.subtitle": "Play the triad for the given root/inversion in the shown order (any octave).",
   "triads.start": "Start",
   "triads.stop": "Stop",
@@ -469,8 +469,8 @@ const en: Dict = {
   "triads.inversion_mode.title": "Inversion",
   "triads.inversion_mode.mix": "Mix",
 
-  // Tetrads (4-note chord quiz)
-  "tetrads.title": "Tetrads Quiz",
+  // Tetrads (4-note chord training)
+  "tetrads.title": "Tetrads Training",
   "tetrads.subtitle": "Play the 4-note chord for the given root/inversion in the shown order (any octave).",
   "tetrads.start": "Start",
   "tetrads.stop": "Stop",
